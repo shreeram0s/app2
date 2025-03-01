@@ -140,7 +140,7 @@ if resume_file and job_desc:
 
             # Generate learning plan
             st.write("Columns in schedule_df:", schedule_df.columns)
-          )
+          
 
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
