@@ -67,23 +67,6 @@ def compare_texts(resume_text, job_desc_text):
     similarity_score = cosine_similarity(tfidf_matrix[0], tfidf_matrix[1])[0][0]
     return round(similarity_score * 100, 2)  # Convert to percentage
 
-# Function to suggest courses for missing skills
-def suggest_courses(missing_skills):
-    course_links = {
-        "python": "https://www.coursera.org/courses?query=python",
-        "machine learning": "https://www.coursera.org/courses?query=machine%20learning",
-        "data science": "https://www.udacity.com/course/data-scientist-nanodegree--nd025",
-        "sql": "https://www.datacamp.com/courses/intro-to-sql-for-data-science",
-        "excel": "https://www.udemy.com/course/microsoft-excel/",
-        "deep learning": "https://www.deeplearning.ai/",
-        "nlp": "https://www.coursera.org/specializations/natural-language-processing",
-        "power bi": "https://www.udemy.com/course/power-bi-course/",
-        "tableau": "https://www.tableau.com/learn/training",
-        "cloud computing": "https://aws.amazon.com/training/",
-    }
-    suggested_courses = {skill: course_links.get(skill, "No course found") for skill in missing_skills}
-    return suggested_courses
-
 # Streamlit UI
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
 
@@ -106,35 +89,6 @@ if resume_file and job_desc_file:
         st.subheader("🔍 Match Analysis")
         st.write(f"**Matching Score:** `{match_score}%`")
 
-        # Extract skills from resume and job description
-        resume_skills = extract_skills(resume_text)
-        job_desc_skills = extract_skills(job_desc_text)
-        missing_skills = list(set(job_desc_skills) - set(resume_skills))
-
-        # Display Extracted Skills
-        st.subheader("📌 Extracted Skills")
-        st.write("✅ **Skills in Resume:**", ", ".join(resume_skills) if resume_skills else "No skills detected.")
-        st.write("📌 **Skills in Job Description:**", ", ".join(job_desc_skills) if job_desc_skills else "No skills detected.")
-
-        # Highlight Missing Skills
-        if missing_skills:
-            st.warning(f"⚠️ Missing Skills: {', '.join(missing_skills)}")
-            
-            # Suggest Courses
-            st.subheader("🎓 Course Recommendations for Missing Skills")
-            course_suggestions = suggest_courses(missing_skills)
-            for skill, link in course_suggestions.items():
-                st.write(f"- **{skill.title()}**: [Learn Here]({link})")
-        else:
-            st.success("✅ Your resume contains all required skills!")
-
-        # Visualization Section
-        st.subheader("📊 Match Score Breakdown")
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.pie([match_score, 100 - match_score], labels=["Matched", "Not Matched"], autopct="%1.1f%%", colors=["#4CAF50", "#FF5733"], startangle=90)
-        ax.set_title("Resume vs. Job Description Match")
-        st.pyplot(fig)
-
         # Suggestions based on score
         st.subheader("📌 Recommendations")
         if match_score >= 80:
@@ -144,7 +98,7 @@ if resume_file and job_desc_file:
         else:
             st.error("❌ Your resume does not match well. Update it with relevant skills.")
 
-        st.markdown("### 🔹 Optimization Tips:") 
-        st.markdown("✅ Include key skills mentioned in the job description.")
-        st.markdown("✅ Use action words and quantified achievements.")
-        st.markdown
+        # Optimization Tips Section
+        st.markdown("### 🔹 Optimization Tips:")
+        st.markdown("- ✅ Include key skills mentioned in the job description.")
+        st.markdown("- ✅ Use action words and quantified achievements.")
