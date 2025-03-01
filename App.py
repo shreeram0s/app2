@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import requests
+import matplotlib.pyplot as plt
+import seaborn as sns
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer, util
 
@@ -20,7 +22,10 @@ def analyze_resume(resume_text, job_desc_text):
     job_skills = extract_skills(job_desc_text)
     missing_skills = list(set(job_skills) - set(resume_skills))
     
-    return resume_skills, job_skills, missing_skills
+    resume_embedding = model.encode(resume_text, convert_to_tensor=True)
+    job_desc_embedding = model.encode(job_desc_text, convert_to_tensor=True)
+    similarity_score = util.pytorch_cos_sim(resume_embedding, job_desc_embedding).item()
+    return resume_skills, job_skills, missing_skills, similarity_score
 
 # Function to fetch learning resources dynamically from online sources
 def fetch_learning_resources(skill):
@@ -61,12 +66,21 @@ job_desc = st.text_area("Paste the Job Description")
 if resume_file and job_desc:
     with st.spinner("Processing..."):
         resume_text = resume_file.read().decode("utf-8")
-        resume_skills, job_skills, missing_skills = analyze_resume(resume_text, job_desc)
+        resume_skills, job_skills, missing_skills, similarity_score = analyze_resume(resume_text, job_desc)
 
+        st.subheader("📌 Brief Description")
+        st.write("**Resume Summary:**")
+        st.write(resume_text[:500] + "...")  # Displaying first 500 chars
+        st.write("**Job Description Summary:**")
+        st.write(job_desc[:500] + "...")
+        
+        st.subheader("📊 Matching Score")
+        st.write(f"✅ **Resume & Job Description Similarity Score:** {similarity_score:.2f} (out of 1)")
+        
         st.subheader("📌 Identified Skills")
         st.write(f"✅ **Skills in Resume:** {', '.join(resume_skills)}")
         st.write(f"🎯 **Skills Required in Job:** {', '.join(job_skills)}")
-
+        
         if missing_skills:
             st.warning(f"🚀 **You are missing these skills:** {', '.join(missing_skills)}")
             
@@ -74,6 +88,16 @@ if resume_file and job_desc:
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
             st.dataframe(schedule_df)
-
+            
+            # Visualization of Resume vs Job Description Skills
+            st.subheader("📊 Skills Comparison Visualization")
+            skill_categories = ["Resume Skills", "Job Required Skills", "Missing Skills"]
+            skill_counts = [len(resume_skills), len(job_skills), len(missing_skills)]
+            
+            fig, ax = plt.subplots()
+            sns.barplot(x=skill_categories, y=skill_counts, palette="coolwarm", ax=ax)
+            ax.set_ylabel("Number of Skills")
+            ax.set_title("Resume vs. Job Description Skills Match")
+            st.pyplot(fig)
         else:
             st.success("✅ No missing skills detected! Your resume is well-matched.")
