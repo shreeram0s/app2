@@ -5,7 +5,7 @@ import PyPDF2
 import docx
 import re
 import matplotlib.pyplot as plt
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import SentenceTransformer
 from bs4 import BeautifulSoup
 import requests
 
@@ -32,7 +32,8 @@ def extract_text(uploaded_file):
 
 def extract_skills(text):
     skills = {"SQL", "Power BI", "Python", "AWS", "Machine Learning", "Data Science"}
-    return {skill for skill in skills if re.search(rf"\\b{skill}\\b", text, re.IGNORECASE)}
+    found_skills = {skill for skill in skills if re.search(rf"\\b{skill}\\b", text, re.IGNORECASE)}
+    return found_skills
 
 def find_missing_skills(resume_text, job_desc_text):
     resume_skills = extract_skills(resume_text)
@@ -50,15 +51,17 @@ def fetch_learning_resources(skill):
 
 def generate_learning_plan(missing_skills):
     schedule = []
-    for idx, skill in enumerate(missing_skills, start=1):
+    day_counter = 1
+    for skill in missing_skills:
         resources = fetch_learning_resources(skill)
-        if resources:
-            schedule.append((f"Day {idx}", skill, f"[Click here]({resources[0]})"))
+        for resource in resources:
+            schedule.append((f"Day {day_counter}", skill, f"[Click here]({resource})"))
+        day_counter += 1
     df = pd.DataFrame(schedule, columns=["Day", "Skill", "Resource Link"])
     return df.drop_duplicates()
 
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
-st.subheader("📌 Upload your resume and job description to identify skill gaps!")
+st.subheader("📌 Upload your Resume and Job Description to Identify Skill Gaps!")
 
 resume_file = st.file_uploader("Upload your Resume (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 job_desc_file = st.file_uploader("Upload Job Description (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
