@@ -31,7 +31,7 @@ st.title("\U0001F4C4 AI Resume Analyzer")  # 📄 Unicode emoji
 st.markdown("#### Upload your resume and job description to analyze compatibility.")
 
 # Sidebar Upload Section
-st.sidebar.header("\ud83d\udcc2 Upload Files")
+st.sidebar.header("\U0001F4C2 Upload Files")  # 📂 Folder emoji
 resume_file = st.sidebar.file_uploader("Upload Resume (PDF/DOCX)", type=["pdf", "docx"])
 job_desc_file = st.sidebar.file_uploader("Upload Job Description (TXT/DOCX)", type=["txt", "docx"])
 
