@@ -31,8 +31,12 @@ def extract_text(uploaded_file):
     return ""
 
 def extract_skills(text):
-    skills = {"SQL", "Power BI", "Python", "AWS", "Machine Learning", "Data Science"}
-    return {skill for skill in skills if re.search(rf"\\b{skill}\\b", text, re.IGNORECASE)}
+    predefined_skills = ["SQL", "Power BI", "Python", "AWS", "Machine Learning", "Data Science"]
+    found_skills = set()
+    for skill in predefined_skills:
+        if re.search(rf"\\b{skill}\\b", text, re.IGNORECASE):
+            found_skills.add(skill)
+    return found_skills
 
 def find_missing_skills(resume_text, job_desc_text):
     resume_skills = extract_skills(resume_text)
@@ -41,12 +45,14 @@ def find_missing_skills(resume_text, job_desc_text):
     return list(missing_skills), list(resume_skills), list(job_skills)
 
 def fetch_learning_resources(skill):
-    search_url = f"https://www.google.com/search?q=best+{skill}+courses"
+    search_url = f"https://www.googleapis.com/customsearch/v1?q=best+{skill}+courses&key=YOUR_API_KEY&cx=YOUR_CSE_ID"
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(search_url, headers=headers)
-    soup = BeautifulSoup(response.text, "html.parser")
-    links = [a['href'] for a in soup.find_all('a', href=True) if "http" in a['href'] and "google.com" not in a['href']]
-    return links[:5] if links else ["No resources found"]
+    if response.status_code == 200:
+        data = response.json()
+        links = [item['link'] for item in data.get("items", [])]
+        return links[:5]
+    return []
 
 def generate_learning_plan(missing_skills):
     schedule = []
@@ -63,7 +69,7 @@ st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
 st.subheader("📌 Upload your resume and job description to identify skill gaps!")
 
 resume_file = st.file_uploader("Upload your Resume (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
-job_desc_file = st.file_uploader("Upload the Job Description (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
+job_desc_file = st.file_uploader("Upload Job Description (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 
 if resume_file and job_desc_file:
     with st.spinner("Processing..."):
