@@ -7,13 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-
-# Download NLTK stopwords if not already downloaded
-nltk.download("punkt")
-nltk.download("stopwords")
+import string
 
 # Predefined list of common skills (expand this as needed)
 SKILLS_DB = [
@@ -34,12 +28,35 @@ def extract_text_from_docx(uploaded_file):
     text = "\n".join([para.text for para in doc.paragraphs])
     return text
 
+# Function to process text: tokenization and removing stopwords
+def process_text(text):
+    stopwords = set([
+        "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
+        "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself",
+        "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that",
+        "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having",
+        "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while",
+        "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after",
+        "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then",
+        "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other",
+        "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just",
+        "don", "should", "now", "d", "ll", "m", "o", "re", "ve", "y", "ain", "aren", "couldn", "didn", "doesn", "hadn", "hasn",
+        "haven", "isn", "ma", "mightn", "mustn", "needn", "shan", "shouldn", "wasn", "weren", "won", "wouldn"
+    ])
+    
+    # Convert text to lowercase and remove punctuation
+    text = text.lower()
+    text = text.translate(str.maketrans("", "", string.punctuation))
+    
+    # Tokenize and remove stopwords
+    words = text.split()
+    words = [word for word in words if word not in stopwords]
+    
+    return words
+
 # Function to extract skills from text
 def extract_skills(text):
-    text = text.lower()
-    words = word_tokenize(text)
-    words = [word for word in words if word.isalpha()]  # Remove punctuation
-    words = [word for word in words if word not in stopwords.words("english")]  # Remove stopwords
+    words = process_text(text)
     extracted_skills = list(set(word for word in words if word in SKILLS_DB))
     return extracted_skills
 
@@ -127,9 +144,7 @@ if resume_file and job_desc_file:
         else:
             st.error("❌ Your resume does not match well. Update it with relevant skills.")
 
-        st.markdown("### 🔹 Optimization Tips:")
+        st.markdown("### 🔹 Optimization Tips:") 
         st.markdown("✅ Include key skills mentioned in the job description.")
         st.markdown("✅ Use action words and quantified achievements.")
-        st.markdown("✅ Align your experience with job requirements.")
-
-st.sidebar.info("🔹 Make sure your resume is optimized for best results.")
+        st.markdown
