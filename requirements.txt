@@ -1,3 +1,4 @@
+wordcloud
 seaborn
 beautifulsoup4
 matplotlib
