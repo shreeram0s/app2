@@ -4,9 +4,6 @@ import io
 import PyPDF2
 import re
 import matplotlib.pyplot as plt
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from fpdf import FPDF
 
 # Predefined learning resources for missing skills
 learning_resources = {
@@ -68,27 +65,6 @@ def generate_learning_plan(missing_skills):
             schedule.extend(learning_resources[skill])
     return pd.DataFrame(schedule, columns=["Day", "Topic", "Resource Link"])
 
-# Function to generate a PDF for downloading
-def generate_pdf(schedule_df):
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    pdf.cell(200, 10, txt="Skill Learning Schedule", ln=True, align="C")
-    pdf.ln(10)
-
-    for _, row in schedule_df.iterrows():
-        pdf.cell(200, 10, txt=f"Day {row['Day']} - {row['Topic']}", ln=True, align="L")
-        pdf.cell(200, 10, txt=f"Resource: {row['Resource Link']}", ln=True, align="L")
-        pdf.ln(10)
-
-    pdf_output = io.BytesIO()
-    pdf.output(pdf_output, 'F')
-    pdf_output.seek(0)
-
-    return pdf_output
-
 # Streamlit UI
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
 st.subheader("📌 Upload your resume and job description to identify skill gaps!")
@@ -131,12 +107,5 @@ if resume_file and job_desc:
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
             st.dataframe(schedule_df)
-
-            # Generate PDF
-            pdf_file = generate_pdf(schedule_df)
-            st.download_button(label="📥 Download Learning Plan as PDF",
-                               data=pdf_file,
-                               file_name="learning_schedule.pdf",
-                               mime="application/pdf")
         else:
             st.success("✅ No missing skills detected! Your resume is well-matched.")
