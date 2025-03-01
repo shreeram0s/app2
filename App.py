@@ -64,15 +64,15 @@ if resume_file and job_desc_file:
         # Suggestions based on score
         st.subheader("\ud83d\udccc Recommendations")
         if match_score >= 80:
-            st.success("✅ Your resume is a great match for this job! Keep it up.")
+            st.success(" Your resume is a great match for this job! Keep it up.")
         elif 50 <= match_score < 80:
-            st.warning("⚠️ Moderate match. Consider adding relevant skills and keywords.")
+            st.warning(" Moderate match. Consider adding relevant skills and keywords.")
         else:
-            st.error("❌ Your resume does not match well. Update it with relevant skills.")
+            st.error(" Your resume does not match well. Update it with relevant skills.")
         
         st.markdown("### 🔹 Optimization Tips:")
-        st.markdown("✅ Include key skills mentioned in the job description.")
-        st.markdown("✅ Use action words and quantified achievements.")
-        st.markdown("✅ Align your experience with job requirements.")
+        st.markdown(" Include key skills mentioned in the job description.")
+        st.markdown(" Use action words and quantified achievements.")
+        st.markdown(" Align your experience with job requirements.")
 
 st.sidebar.info("🔹 Make sure your resume is optimized for best results.")
