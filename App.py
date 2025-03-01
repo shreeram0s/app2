@@ -1,19 +1,11 @@
 import streamlit as st
 import pdfplumber
 import docx
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import spacy
-import textstat
-import wordcloud
 import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize
-from sklearn.feature_extraction.text import CountVectorizer
-from transformers import pipeline
+from nltk.tokenize import word_tokenize
 
-# Ensure NLTK resources are available before using word_tokenize
-nltk.download('punkt')
+# Ensure NLTK resources are available before calling word_tokenize()
+nltk.download('punkt', quiet=True)
 
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
@@ -28,7 +20,7 @@ def extract_text_from_docx(docx_file):
 
 # Function to extract keywords
 def extract_keywords(text):
-    words = word_tokenize(text)  # Now punkt is available
+    words = word_tokenize(text)  # Tokenize the text
     words = [word.lower() for word in words if word.isalnum()]  # Remove punctuation
     return words
 
