@@ -69,24 +69,29 @@ def generate_learning_plan(missing_skills):
     return pd.DataFrame(schedule, columns=["Day", "Topic", "Resource Link"])
 
 # Function to generate a PDF for downloading
+
 def generate_pdf(schedule_df):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", size=12)
 
-    pdf.cell(200, 10, "Personalized Learning Plan", ln=True, align='C')
+    pdf.cell(200, 10, txt="Skill Learning Schedule", ln=True, align="C")
     pdf.ln(10)
 
     for index, row in schedule_df.iterrows():
-        pdf.cell(0, 10, f"{row['Day']}: {row['Topic']}", ln=True)
-        pdf.cell(0, 10, f"Resource: {row['Resource Link']}", ln=True)
-        pdf.ln(5)
+        pdf.cell(200, 10, txt=f"Day {row['Day']} - {row['Topic']}", ln=True, align="L")
+        pdf.cell(200, 10, txt=f"Time: {row['Time']}", ln=True, align="L")
+        pdf.cell(200, 10, txt=f"Resource: {row['Resources']}", ln=True, align="L")
+        pdf.ln(10)
 
+    # Use BytesIO to avoid file system issues
     pdf_output = io.BytesIO()
-    pdf.output(pdf_output)
+    pdf.output(pdf_output, 'F')  # 'F' mode ensures it writes to memory
     pdf_output.seek(0)
+
     return pdf_output
+
 
 # Streamlit UI
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
