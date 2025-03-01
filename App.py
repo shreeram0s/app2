@@ -5,12 +5,17 @@ import PyPDF2
 import docx
 import re
 import matplotlib.pyplot as plt
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, util
 from bs4 import BeautifulSoup
 import requests
+import spacy
 
 # Load the SBERT model
 model = SentenceTransformer("all-MiniLM-L6-v2")
+nlp = spacy.load("en_core_web_sm")  # Load NLP model for better skill extraction
+
+# Expanded skill set
+SKILL_SET = {"SQL", "Power BI", "Python", "AWS", "Machine Learning", "Data Science", "Deep Learning", "Cloud Computing", "TensorFlow", "PyTorch", "NLP", "Big Data", "Kubernetes", "Docker", "Java", "C++", "JavaScript"}
 
 def extract_text_from_pdf(uploaded_file):
     pdf_reader = PyPDF2.PdfReader(uploaded_file)
@@ -31,9 +36,9 @@ def extract_text(uploaded_file):
     return ""
 
 def extract_skills(text):
-    skills = {"SQL", "Power BI", "Python", "AWS", "Machine Learning", "Data Science"}
-    found_skills = {skill for skill in skills if re.search(rf"\\b{skill}\\b", text, re.IGNORECASE)}
-    return found_skills
+    doc = nlp(text)
+    extracted_skills = {token.text for token in doc if token.text in SKILL_SET}
+    return extracted_skills
 
 def find_missing_skills(resume_text, job_desc_text):
     resume_skills = extract_skills(resume_text)
@@ -61,10 +66,10 @@ def generate_learning_plan(missing_skills):
     return df.drop_duplicates()
 
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
-st.subheader("📌 Upload your Resume and Job Description to Identify Skill Gaps!")
+st.subheader("📌 Upload your resume and job description to identify skill gaps!")
 
 resume_file = st.file_uploader("Upload your Resume (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
-job_desc_file = st.file_uploader("Upload Job Description (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
+job_desc_file = st.file_uploader("Upload the Job Description (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 
 if resume_file and job_desc_file:
     with st.spinner("Processing..."):
