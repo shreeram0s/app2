@@ -1,3 +1,5 @@
+spacy
+en-core-web-sm
 numpy
 sentence-transformers
 torch
@@ -18,7 +20,6 @@ torch
 torchvision
 torchaudio
 language_tool_python
-spacy
 numpy
 wordcloud
 textstat
