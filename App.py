@@ -27,7 +27,7 @@ def compare_texts(resume_text, job_desc_text):
 # Streamlit UI
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
 
-st.title("\ud83d\udcc4 AI Resume Analyzer")
+st.title("\U0001F4C4 AI Resume Analyzer")  # 📄 Unicode emoji
 st.markdown("#### Upload your resume and job description to analyze compatibility.")
 
 # Sidebar Upload Section
