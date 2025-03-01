@@ -1,7 +1,10 @@
-import streamlit as st
+\import streamlit as st
 import pdfplumber
 import docx
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -27,27 +30,27 @@ def compare_texts(resume_text, job_desc_text):
 # Streamlit UI
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
 
-st.title("\U0001F4C4 AI Resume Analyzer")  # 📄 Unicode emoji
-st.markdown("#### Upload your resume and job description to analyze compatibility.")
+st.title(":page_facing_up: AI Resume Analyzer")
+st.markdown("### Upload your resume and job description to analyze compatibility.")
 
 # Sidebar Upload Section
-st.sidebar.header("\U0001F4C2 Upload Files")  # 📂 Folder emoji
+st.sidebar.header(":file_folder: Upload Files")
 resume_file = st.sidebar.file_uploader("Upload Resume (PDF/DOCX)", type=["pdf", "docx"])
 job_desc_file = st.sidebar.file_uploader("Upload Job Description (TXT/DOCX)", type=["txt", "docx"])
 
 if resume_file and job_desc_file:
-    with st.spinner("\ud83d\udd0d Processing... Please wait"):
+    with st.spinner("🔍 Processing... Please wait"):
         # Extract text
         resume_text = extract_text_from_pdf(resume_file) if resume_file.name.endswith(".pdf") else extract_text_from_docx(resume_file)
         job_desc_text = extract_text_from_docx(job_desc_file) if job_desc_file.name.endswith(".docx") else job_desc_file.read().decode("utf-8")
         
         # Compare and display results
         match_score = compare_texts(resume_text, job_desc_text)
-        st.subheader("\ud83d\udd0d Match Analysis")
+        st.subheader("🔍 Match Analysis")
         st.write(f"**Matching Score:** `{match_score}%`")
         
-        # Detailed Information on Resume vs. Job Description
-        st.subheader("\ud83d\udcdd Resume Summary vs. Job Description Summary")
+        # Resume vs. Job Description Summary
+        st.subheader("📄 Resume vs. Job Description Summary")
         col1, col2 = st.columns(2)
         col1.markdown("**Resume Extract:**")
         col1.write(resume_text[:500] + "...")  # Displaying only first 500 characters
@@ -55,24 +58,31 @@ if resume_file and job_desc_file:
         col2.write(job_desc_text[:500] + "...")
         
         # Visualization Section
-        st.subheader("\ud83d\udcca Match Score Breakdown")
+        st.subheader("📊 Match Score Breakdown")
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.pie([match_score, 100 - match_score], labels=["Matched", "Not Matched"], autopct='%1.1f%%', colors=["#4CAF50", "#FF5733"], startangle=90)
         ax.set_title("Resume vs. Job Description Match")
         st.pyplot(fig)
         
-        # Suggestions based on score
-        st.subheader("\ud83d\udccc Recommendations")
+        # Recommendations Section
+        st.subheader("📌 Recommendations")
         if match_score >= 80:
-            st.success(" Your resume is a great match for this job! Keep it up.")
+            st.success("✅ Your resume is a great match for this job! Keep it up.")
         elif 50 <= match_score < 80:
-            st.warning(" Moderate match. Consider adding relevant skills and keywords.")
+            st.warning("⚠️ Moderate match. Consider adding relevant skills and keywords.")
         else:
-            st.error(" Your resume does not match well. Update it with relevant skills.")
+            st.error("❌ Your resume does not match well. Update it with relevant skills.")
         
-        st.markdown("### 🔹 Optimization Tips:")
-        st.markdown(" Include key skills mentioned in the job description.")
-        st.markdown(" Use action words and quantified achievements.")
-        st.markdown(" Align your experience with job requirements.")
+        # Course Recommendations Based on Skills
+        st.subheader("🎓 Recommended Courses")
+        if match_score < 50:
+            st.markdown("- **[Resume Writing & Optimization](https://www.coursera.org/learn/resume-writing)**")
+            st.markdown("- **[Job Search Strategies](https://www.edx.org/course/job-search-strategies)**")
+        elif 50 <= match_score < 80:
+            st.markdown("- **[Skill Enhancement in Python](https://www.udemy.com/course/python-for-data-science/)**")
+            st.markdown("- **[Advanced Data Analysis](https://www.coursera.org/learn/data-analysis)**")
+        else:
+            st.markdown("- **[Leadership & Career Growth](https://www.udemy.com/course/leadership-skills/)**")
+            st.markdown("- **[Negotiation & Communication Skills](https://www.coursera.org/learn/negotiation-skills/)**")
 
-st.sidebar.info("🔹 Make sure your resume is optimized for best results.")
+st.sidebar.info("🔹 Ensure your resume is well-optimized for best results.")
