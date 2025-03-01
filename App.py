@@ -69,7 +69,6 @@ def generate_learning_plan(missing_skills):
     return pd.DataFrame(schedule, columns=["Day", "Topic", "Resource Link"])
 
 # Function to generate a PDF for downloading
-
 def generate_pdf(schedule_df):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -79,15 +78,9 @@ def generate_pdf(schedule_df):
     pdf.cell(200, 10, txt="Skill Learning Schedule", ln=True, align="C")
     pdf.ln(10)
 
-    for index, row in schedule_df.iterrows():
-        day = row.get('Day', 'N/A')  # Use 'N/A' if the key is missing
-        topic = row.get('Topic', 'N/A')
-        time = row.get('Time', 'N/A')  # This prevents KeyError
-        resource = row.get('Resources', 'N/A')
-
-        pdf.cell(200, 10, txt=f"Day {day} - {topic}", ln=True, align="L")
-        pdf.cell(200, 10, txt=f"Time: {time}", ln=True, align="L")
-        pdf.cell(200, 10, txt=f"Resource: {resource}", ln=True, align="L")
+    for _, row in schedule_df.iterrows():
+        pdf.cell(200, 10, txt=f"Day {row['Day']} - {row['Topic']}", ln=True, align="L")
+        pdf.cell(200, 10, txt=f"Resource: {row['Resource Link']}", ln=True, align="L")
         pdf.ln(10)
 
     pdf_output = io.BytesIO()
@@ -95,8 +88,6 @@ def generate_pdf(schedule_df):
     pdf_output.seek(0)
 
     return pdf_output
-
-
 
 # Streamlit UI
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
@@ -134,14 +125,9 @@ if resume_file and job_desc:
 
             # Recommendations based on missing skills
             st.subheader("📌 Recommendations")
-        
-
             st.write("To improve your resume, consider learning these missing skills through the suggested courses below.")
 
             # Generate learning plan
-            st.write("Columns in schedule_df:", schedule_df.columns)
-          
-
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
             st.dataframe(schedule_df)
