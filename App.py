@@ -80,17 +80,22 @@ def generate_pdf(schedule_df):
     pdf.ln(10)
 
     for index, row in schedule_df.iterrows():
-        pdf.cell(200, 10, txt=f"Day {row['Day']} - {row['Topic']}", ln=True, align="L")
-        pdf.cell(200, 10, txt=f"Time: {row['Time']}", ln=True, align="L")
-        pdf.cell(200, 10, txt=f"Resource: {row['Resources']}", ln=True, align="L")
+        day = row.get('Day', 'N/A')  # Use 'N/A' if the key is missing
+        topic = row.get('Topic', 'N/A')
+        time = row.get('Time', 'N/A')  # This prevents KeyError
+        resource = row.get('Resources', 'N/A')
+
+        pdf.cell(200, 10, txt=f"Day {day} - {topic}", ln=True, align="L")
+        pdf.cell(200, 10, txt=f"Time: {time}", ln=True, align="L")
+        pdf.cell(200, 10, txt=f"Resource: {resource}", ln=True, align="L")
         pdf.ln(10)
 
-    # Use BytesIO to avoid file system issues
     pdf_output = io.BytesIO()
-    pdf.output(pdf_output, 'F')  # 'F' mode ensures it writes to memory
+    pdf.output(pdf_output, 'F')
     pdf_output.seek(0)
 
     return pdf_output
+
 
 
 # Streamlit UI
@@ -129,9 +134,13 @@ if resume_file and job_desc:
 
             # Recommendations based on missing skills
             st.subheader("📌 Recommendations")
+            st.write("Columns in schedule_df:", schedule_df.columns)
+
             st.write("To improve your resume, consider learning these missing skills through the suggested courses below.")
 
             # Generate learning plan
+            st.write("Columns in schedule_df:", schedule_df.columns)
+
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
             st.dataframe(schedule_df)
