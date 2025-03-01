@@ -12,10 +12,8 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 from transformers import pipeline
 
-# Ensure nltk resources are downloaded inside a function
-def download_nltk_resources():
-    import nltk
-    nltk.download('punkt')
+# Ensure NLTK resources are available before using word_tokenize
+nltk.download('punkt')
 
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
@@ -30,7 +28,6 @@ def extract_text_from_docx(docx_file):
 
 # Function to extract keywords
 def extract_keywords(text):
-    download_nltk_resources()  # Download punkt before using word_tokenize
     words = word_tokenize(text)  # Now punkt is available
     words = [word.lower() for word in words if word.isalnum()]  # Remove punctuation
     return words
