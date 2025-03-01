@@ -1,88 +1,142 @@
 import streamlit as st
-import pdfplumber
-import docx
 import pandas as pd
-import numpy as np
+import io
+import PyPDF2
+import re
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from fpdf import FPDF
+
+# Predefined learning resources for missing skills
+learning_resources = {
+    "SQL": [
+        ("Day 1", "Introduction to Databases & SQL Basics", "https://www.coursera.org/learn/sql-for-data-science"),
+        ("Day 2", "SELECT, WHERE, and Filtering Data", "https://www.w3schools.com/sql/"),
+        ("Day 3", "Aggregation & Joins", "https://www.kaggle.com/learn/advanced-sql"),
+        ("Day 4", "Writing Complex Queries", "https://www.udemy.com/course/sql-intermediate/"),
+        ("Day 5", "Hands-on Practice: Solve 10 SQL Problems", "https://leetcode.com/problemset/database/"),
+        ("Day 6", "SQL Project: Building a Mini Database", "https://www.datacamp.com/"),
+        ("Day 7", "Revision & Mock Test", "https://www.testdome.com/")
+    ],
+    "Power BI": [
+        ("Day 1", "Introduction to Power BI", "https://www.udemy.com/course/microsoft-power-bi/"),
+        ("Day 2", "Connecting Data Sources", "https://www.youtube.com/watch?v=JgR29b8L7N4"),
+        ("Day 3", "Creating Interactive Dashboards", "https://www.coursera.org/learn/power-bi-dashboards"),
+        ("Day 4", "Hands-on Practice: Build a Sales Dashboard", "https://www.datacamp.com/"),
+        ("Day 5", "Advanced Visualizations & DAX", "https://www.sqlbi.com/"),
+        ("Day 6", "Final Power BI Project", "https://www.kaggle.com/"),
+        ("Day 7", "Review & Feedback", "https://www.linkedin.com/")
+    ],
+    "Python": [
+        ("Day 1", "Python Basics: Variables, Data Types", "https://www.w3schools.com/python/"),
+        ("Day 2", "Loops and Conditionals", "https://www.udemy.com/course/python-for-beginners-learn-programming-from-scratch/"),
+        ("Day 3", "Functions & Modules", "https://www.coursera.org/learn/python"),
+        ("Day 4", "Object-Oriented Programming", "https://realpython.com/python-oop/"),
+        ("Day 5", "Data Analysis with Pandas", "https://www.datacamp.com/courses/pandas-foundations"),
+        ("Day 6", "Python Mini-Project", "https://www.kaggle.com/"),
+        ("Day 7", "Final Review & Mock Tests", "https://www.hackerrank.com/domains/tutorials/10-days-of-python")
+    ]
+}
 
 # Function to extract text from PDF
 def extract_text_from_pdf(uploaded_file):
-    with pdfplumber.open(uploaded_file) as pdf:
-        text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+    pdf_reader = PyPDF2.PdfReader(uploaded_file)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() + " "
     return text
 
-# Function to extract text from DOCX
-def extract_text_from_docx(uploaded_file):
-    doc = docx.Document(uploaded_file)
-    text = "\n".join([para.text for para in doc.paragraphs])
-    return text
+# Function to extract skills using regex
+def extract_skills(text):
+    skills = {"SQL", "Power BI", "Python"}  # Expand this with more skills
+    found_skills = {skill for skill in skills if re.search(rf"\b{skill}\b", text, re.IGNORECASE)}
+    return found_skills
 
-# Function to compare resume and job description
-def compare_texts(resume_text, job_desc_text):
-    vectorizer = TfidfVectorizer(stop_words='english')
-    tfidf_matrix = vectorizer.fit_transform([resume_text, job_desc_text])
-    similarity_score = cosine_similarity(tfidf_matrix[0], tfidf_matrix[1])[0][0]
-    return round(similarity_score * 100, 2)  # Convert to percentage
+# Function to identify missing skills
+def find_missing_skills(resume_text, job_desc_text):
+    resume_skills = extract_skills(resume_text)
+    job_skills = extract_skills(job_desc_text)
+    missing_skills = job_skills - resume_skills
+    return list(missing_skills), list(resume_skills), list(job_skills)
+
+# Function to generate a structured learning plan
+def generate_learning_plan(missing_skills):
+    schedule = []
+    for skill in missing_skills:
+        if skill in learning_resources:
+            schedule.extend(learning_resources[skill])
+    return pd.DataFrame(schedule, columns=["Day", "Topic", "Resource Link"])
+
+# Function to generate a PDF for downloading
+def generate_pdf(schedule_df):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.cell(200, 10, "Personalized Learning Plan", ln=True, align='C')
+    pdf.ln(10)
+
+    for index, row in schedule_df.iterrows():
+        pdf.cell(0, 10, f"{row['Day']}: {row['Topic']}", ln=True)
+        pdf.cell(0, 10, f"Resource: {row['Resource Link']}", ln=True)
+        pdf.ln(5)
+
+    pdf_output = io.BytesIO()
+    pdf.output(pdf_output)
+    pdf_output.seek(0)
+    return pdf_output
 
 # Streamlit UI
-st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
+st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
+st.subheader("📌 Upload your resume and job description to identify skill gaps!")
 
-st.title(":page_facing_up: AI Resume Analyzer")
-st.markdown("### Upload your resume and job description to analyze compatibility.")
+# Upload resume
+resume_file = st.file_uploader("Upload your Resume (PDF)", type=["pdf"])
+job_desc = st.text_area("Paste the Job Description")
 
-# Sidebar Upload Section
-st.sidebar.header(":file_folder: Upload Files")
-resume_file = st.sidebar.file_uploader("Upload Resume (PDF/DOCX)", type=["pdf", "docx"])
-job_desc_file = st.sidebar.file_uploader("Upload Job Description (TXT/DOCX)", type=["txt", "docx"])
+if resume_file and job_desc:
+    with st.spinner("Processing..."):
+        resume_text = extract_text_from_pdf(resume_file)
+        missing_skills, resume_skills, job_skills = find_missing_skills(resume_text, job_desc)
 
-if resume_file and job_desc_file:
-    with st.spinner("🔍 Processing... Please wait"):
-        # Extract text
-        resume_text = extract_text_from_pdf(resume_file) if resume_file.name.endswith(".pdf") else extract_text_from_docx(resume_file)
-        job_desc_text = extract_text_from_docx(job_desc_file) if job_desc_file.name.endswith(".docx") else job_desc_file.read().decode("utf-8")
-        
-        # Compare and display results
-        match_score = compare_texts(resume_text, job_desc_text)
-        st.subheader("🔍 Match Analysis")
-        st.write(f"**Matching Score:** `{match_score}%`")
-        
-        # Resume vs. Job Description Summary
-        st.subheader("📄 Resume vs. Job Description Summary")
-        col1, col2 = st.columns(2)
-        col1.markdown("**Resume Extract:**")
-        col1.write(resume_text[:500] + "...")  # Displaying only first 500 characters
-        col2.markdown("**Job Description Extract:**")
-        col2.write(job_desc_text[:500] + "...")
-        
-        # Visualization Section
-        st.subheader("📊 Match Score Breakdown")
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.pie([match_score, 100 - match_score], labels=["Matched", "Not Matched"], autopct='%1.1f%%', colors=["#4CAF50", "#FF5733"], startangle=90)
-        ax.set_title("Resume vs. Job Description Match")
+        # Display brief descriptions of resume and job description
+        st.subheader("🔎 Resume Summary")
+        st.write(resume_text[:500] + "...")  # Display first 500 characters
+
+        st.subheader("📄 Job Description Overview")
+        st.write(job_desc[:500] + "...")  # Display first 500 characters
+
+        # Skill matching visualization
+        st.subheader("📊 Skill Matching Visualization")
+        skill_labels = ["Matched Skills", "Missing Skills"]
+        skill_counts = [len(resume_skills), len(missing_skills)]
+
+        fig, ax = plt.subplots()
+        ax.bar(skill_labels, skill_counts, color=["green", "red"])
+        ax.set_ylabel("Count")
+        ax.set_title("Resume vs. Job Description Skills")
         st.pyplot(fig)
-        
-        # Recommendations Section
-        st.subheader("📌 Recommendations")
-        if match_score >= 80:
-            st.success("✅ Your resume is a great match for this job! Keep it up.")
-        elif 50 <= match_score < 80:
-            st.warning("⚠️ Moderate match. Consider adding relevant skills and keywords.")
-        else:
-            st.error("❌ Your resume does not match well. Update it with relevant skills.")
-        
-        # Course Recommendations Based on Skills
-        st.subheader("🎓 Recommended Courses")
-        if match_score < 50:
-            st.markdown("- **[Resume Writing & Optimization](https://www.coursera.org/learn/resume-writing)**")
-            st.markdown("- **[Job Search Strategies](https://www.edx.org/course/job-search-strategies)**")
-        elif 50 <= match_score < 80:
-            st.markdown("- **[Skill Enhancement in Python](https://www.udemy.com/course/python-for-data-science/)**")
-            st.markdown("- **[Advanced Data Analysis](https://www.coursera.org/learn/data-analysis)**")
-        else:
-            st.markdown("- **[Leadership & Career Growth](https://www.udemy.com/course/leadership-skills/)**")
-            st.markdown("- **[Negotiation & Communication Skills](https://www.coursera.org/learn/negotiation-skills/)**")
 
-st.sidebar.info("🔹 Ensure your resume is well-optimized for best results.")
+        if missing_skills:
+            st.success(f"🔍 Missing Skills Identified: {', '.join(missing_skills)}")
+
+            # Recommendations based on missing skills
+            st.subheader("📌 Recommendations")
+            st.write("To improve your resume, consider learning these missing skills through the suggested courses below.")
+
+            # Generate learning plan
+            schedule_df = generate_learning_plan(missing_skills)
+            st.subheader("📅 Personalized Learning Schedule")
+            st.dataframe(schedule_df)
+
+            # Generate PDF
+            pdf_file = generate_pdf(schedule_df)
+            st.download_button(label="📥 Download Learning Plan as PDF",
+                               data=pdf_file,
+                               file_name="learning_schedule.pdf",
+                               mime="application/pdf")
+        else:
+            st.success("✅ No missing skills detected! Your resume is well-matched.")
+
