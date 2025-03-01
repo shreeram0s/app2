@@ -134,12 +134,13 @@ if resume_file and job_desc:
 
             # Recommendations based on missing skills
             st.subheader("📌 Recommendations")
-            st.write("Columns in schedule_df:", schedule_df.columns)
+        
 
             st.write("To improve your resume, consider learning these missing skills through the suggested courses below.")
 
             # Generate learning plan
             st.write("Columns in schedule_df:", schedule_df.columns)
+          )
 
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
