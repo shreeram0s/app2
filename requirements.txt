@@ -1,9 +1,11 @@
-streamlit
-pdfplumber
-python-docx
 nltk
+flask
+streamlit
+pandas
 scikit-learn
 matplotlib
+pdfplumber
+python-docx
 seaborn
 transformers
 torch
@@ -11,7 +13,6 @@ torchvision
 torchaudio
 language_tool_python
 spacy
-pandas
 numpy
 wordcloud
 textstat
