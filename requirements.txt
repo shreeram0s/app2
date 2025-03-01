@@ -1,3 +1,7 @@
+numpy
+sentence-transformers
+torch
+requests
 fpdf
 PyPDF2
 nltk
