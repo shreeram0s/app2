@@ -46,14 +46,19 @@ def fetch_learning_resources(skill):
     return links[:5]  # Return top 5 links
 
 # Function to generate a structured learning plan
+# Function to generate a structured learning plan
 def generate_learning_plan(missing_skills):
     schedule = []
+    day = 1  # Start from Day 1
+    
     for skill in missing_skills:
         resources = fetch_learning_resources(skill)
-        for day, resource in enumerate(resources, start=1):
+        for resource in resources:
             schedule.append((f"Day {day}", skill, resource))
+            day += 1  # Increment day for each new resource
     
     return pd.DataFrame(schedule, columns=["Day", "Skill", "Resource Link"])
+
 
 # Streamlit UI
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
