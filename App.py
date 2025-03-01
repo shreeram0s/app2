@@ -4,6 +4,8 @@ import io
 import PyPDF2
 import re
 import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Predefined learning resources for missing skills
 learning_resources = {
@@ -106,6 +108,8 @@ if resume_file and job_desc:
             # Generate learning plan
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
-            st.dataframe(schedule_df)
+            
+            for index, row in schedule_df.iterrows():
+                st.markdown(f"**{row['Day']} - {row['Topic']}**: [Resource Link]({row['Resource Link']})")
         else:
             st.success("✅ No missing skills detected! Your resume is well-matched.")
