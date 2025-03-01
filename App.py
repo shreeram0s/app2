@@ -10,31 +10,31 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Predefined learning resources for missing skills
 learning_resources = {
     "SQL": [
-        ("Day 1", "Introduction to Databases & SQL Basics", "https://www.coursera.org/learn/sql-for-data-science"),
-        ("Day 2", "SELECT, WHERE, and Filtering Data", "https://www.w3schools.com/sql/"),
-        ("Day 3", "Aggregation & Joins", "https://www.kaggle.com/learn/advanced-sql"),
-        ("Day 4", "Writing Complex Queries", "https://www.udemy.com/course/sql-intermediate/"),
-        ("Day 5", "Hands-on Practice: Solve 10 SQL Problems", "https://leetcode.com/problemset/database/"),
-        ("Day 6", "SQL Project: Building a Mini Database", "https://www.datacamp.com/"),
-        ("Day 7", "Revision & Mock Test", "https://www.testdome.com/")
+        ("Day 1", "Introduction to Databases & SQL Basics", "[SQL Course](https://www.coursera.org/learn/sql-for-data-science)"),
+        ("Day 2", "SELECT, WHERE, and Filtering Data", "[W3Schools SQL](https://www.w3schools.com/sql/)"),
+        ("Day 3", "Aggregation & Joins", "[Kaggle SQL](https://www.kaggle.com/learn/advanced-sql)"),
+        ("Day 4", "Writing Complex Queries", "[Udemy SQL](https://www.udemy.com/course/sql-intermediate/)"),
+        ("Day 5", "Hands-on Practice: Solve 10 SQL Problems", "[LeetCode SQL](https://leetcode.com/problemset/database/)"),
+        ("Day 6", "SQL Project: Building a Mini Database", "[DataCamp](https://www.datacamp.com/)"),
+        ("Day 7", "Revision & Mock Test", "[TestDome](https://www.testdome.com/)")
     ],
     "Power BI": [
-        ("Day 1", "Introduction to Power BI", "https://www.udemy.com/course/microsoft-power-bi/"),
-        ("Day 2", "Connecting Data Sources", "https://www.youtube.com/watch?v=JgR29b8L7N4"),
-        ("Day 3", "Creating Interactive Dashboards", "https://www.coursera.org/learn/power-bi-dashboards"),
-        ("Day 4", "Hands-on Practice: Build a Sales Dashboard", "https://www.datacamp.com/"),
-        ("Day 5", "Advanced Visualizations & DAX", "https://www.sqlbi.com/"),
-        ("Day 6", "Final Power BI Project", "https://www.kaggle.com/"),
-        ("Day 7", "Review & Feedback", "https://www.linkedin.com/")
+        ("Day 1", "Introduction to Power BI", "[Udemy Power BI](https://www.udemy.com/course/microsoft-power-bi/)"),
+        ("Day 2", "Connecting Data Sources", "[YouTube Power BI](https://www.youtube.com/watch?v=JgR29b8L7N4)"),
+        ("Day 3", "Creating Interactive Dashboards", "[Coursera Power BI](https://www.coursera.org/learn/power-bi-dashboards)"),
+        ("Day 4", "Hands-on Practice: Build a Sales Dashboard", "[DataCamp Power BI](https://www.datacamp.com/)"),
+        ("Day 5", "Advanced Visualizations & DAX", "[SQLBI](https://www.sqlbi.com/)"),
+        ("Day 6", "Final Power BI Project", "[Kaggle Power BI](https://www.kaggle.com/)"),
+        ("Day 7", "Review & Feedback", "[LinkedIn Learning](https://www.linkedin.com/)")
     ],
     "Python": [
-        ("Day 1", "Python Basics: Variables, Data Types", "https://www.w3schools.com/python/"),
-        ("Day 2", "Loops and Conditionals", "https://www.udemy.com/course/python-for-beginners-learn-programming-from-scratch/"),
-        ("Day 3", "Functions & Modules", "https://www.coursera.org/learn/python"),
-        ("Day 4", "Object-Oriented Programming", "https://realpython.com/python-oop/"),
-        ("Day 5", "Data Analysis with Pandas", "https://www.datacamp.com/courses/pandas-foundations"),
-        ("Day 6", "Python Mini-Project", "https://www.kaggle.com/"),
-        ("Day 7", "Final Review & Mock Tests", "https://www.hackerrank.com/domains/tutorials/10-days-of-python")
+        ("Day 1", "Python Basics: Variables, Data Types", "[W3Schools Python](https://www.w3schools.com/python/)"),
+        ("Day 2", "Loops and Conditionals", "[Udemy Python](https://www.udemy.com/course/python-for-beginners-learn-programming-from-scratch/)"),
+        ("Day 3", "Functions & Modules", "[Coursera Python](https://www.coursera.org/learn/python)"),
+        ("Day 4", "Object-Oriented Programming", "[Real Python OOP](https://realpython.com/python-oop/)"),
+        ("Day 5", "Data Analysis with Pandas", "[DataCamp Pandas](https://www.datacamp.com/courses/pandas-foundations)"),
+        ("Day 6", "Python Mini-Project", "[Kaggle Python](https://www.kaggle.com/)"),
+        ("Day 7", "Final Review & Mock Tests", "[HackerRank Python](https://www.hackerrank.com/domains/tutorials/10-days-of-python)")
     ]
 }
 
@@ -65,7 +65,10 @@ def generate_learning_plan(missing_skills):
     for skill in missing_skills:
         if skill in learning_resources:
             schedule.extend(learning_resources[skill])
-    return pd.DataFrame(schedule, columns=["Day", "Topic", "Resource Link"])
+    
+    df = pd.DataFrame(schedule, columns=["Day", "Topic", "Resource Link"])
+    df["Resource Link"] = df["Resource Link"].apply(lambda x: f'<a href="{x.split("(")[1][:-1]}" target="_blank">{x}</a>')
+    return df
 
 # Streamlit UI
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
@@ -105,11 +108,9 @@ if resume_file and job_desc:
             st.subheader("📌 Recommendations")
             st.write("To improve your resume, consider learning these missing skills through the suggested courses below.")
 
-            # Generate learning plan
+            # Generate learning plan with clickable links
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
-            
-            for index, row in schedule_df.iterrows():
-                st.markdown(f"**{row['Day']} - {row['Topic']}**: [Resource Link]({row['Resource Link']})")
+            st.write(schedule_df.to_html(escape=False), unsafe_allow_html=True)
         else:
             st.success("✅ No missing skills detected! Your resume is well-matched.")
