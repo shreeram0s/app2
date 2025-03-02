@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import requests
 from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import SentenceTransformer
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
@@ -48,12 +47,32 @@ def analyze_resume(resume_text, job_desc_text):
     missing_skills = list(set(job_skills) - set(resume_skills))
     return resume_skills, job_skills, missing_skills
 
-# Function to generate a learning plan
+# Function to fetch online learning resources dynamically
+def fetch_learning_resources(skill):
+    search_url = f"https://www.google.com/search?q={skill}+online+courses"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    response = requests.get(search_url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    links = []
+    for link in soup.find_all("a", href=True):
+        url = link["href"]
+        if "http" in url and "google" not in url:
+            links.append(url)
+        if len(links) >= 3:
+            break
+    
+    return links[:3]
+
+# Function to generate a structured learning plan
 def generate_learning_plan(missing_skills):
     schedule = []
     for i, skill in enumerate(missing_skills, start=1):
-        schedule.append((f"Week {i}", skill, f"Search for {skill} courses online"))
-    return pd.DataFrame(schedule, columns=["Week", "Skill", "Resource Recommendation"])
+        resources = fetch_learning_resources(skill)
+        schedule.append((f"Week {i}", skill, resources))
+    
+    return pd.DataFrame(schedule, columns=["Week", "Skill", "Recommended Courses"])
 
 # Function to visualize skill comparison
 def visualize_skills(resume_skills, job_skills, missing_skills):
@@ -99,7 +118,7 @@ if resume_file and job_desc_file:
                 # Generate structured learning plan
                 schedule_df = generate_learning_plan(missing_skills)
                 st.subheader("📅 Personalized Learning Schedule")
-                st.dataframe(schedule_df)
+                st.write(schedule_df)
                 
                 # Visualize skills
                 visualize_skills(resume_skills, job_skills, missing_skills)
