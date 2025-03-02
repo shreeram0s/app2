@@ -1,3 +1,10 @@
+streamlit==1.30.0
+pandas==2.1.4
+requests==2.31.0
+beautifulsoup4==4.12.2
+matplotlib==3.8.2
+seaborn==0.12.2
+sentence-transformers==2.2.2
 spacy
 en-core-web-sm
 numpy
