@@ -1,87 +1,79 @@
 import streamlit as st
-import requests
-import docx2txt
-import pdfplumber
-import re
-from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer
-import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
+import requests
+from bs4 import BeautifulSoup
+from sentence_transformers import SentenceTransformer, util
 
-# Load sentence transformer model for skill extraction
+# Load the pre-trained NLP model for semantic comparison
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-def extract_text_from_file(uploaded_file):
-    if uploaded_file.type == "application/pdf":
-        with pdfplumber.open(uploaded_file) as pdf:
-            return "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
-    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        return docx2txt.process(uploaded_file)
-    elif uploaded_file.type == "text/plain":
-        return uploaded_file.read().decode("utf-8")
-    return ""
-
+# Function to extract skills from a given text using NLP
 def extract_skills(text):
-    words = text.lower().split()
-    embeddings = model.encode(words)
-    unique_skills = set(words)  # Simplified skill extraction
-    return list(unique_skills)
+    skills_db = ["Python", "SQL", "Java", "Power BI", "JavaScript", "Machine Learning", "Deep Learning", "Django", "Flask", "React", "AWS", "Azure", "Data Science"]
+    extracted_skills = [skill for skill in skills_db if skill.lower() in text.lower()]
+    return extracted_skills
 
-def find_missing_skills(resume_text, job_desc_text):
-    resume_skills = set(extract_skills(resume_text))
-    job_skills = set(extract_skills(job_desc_text))
-    missing_skills = job_skills - resume_skills
-    return list(missing_skills)
+# Function to compare resume and job description
+def analyze_resume(resume_text, job_desc_text):
+    resume_skills = extract_skills(resume_text)
+    job_skills = extract_skills(job_desc_text)
+    missing_skills = list(set(job_skills) - set(resume_skills))
+    
+    return resume_skills, job_skills, missing_skills
 
-def fetch_course_links(skill):
-    search_url = f"https://www.google.com/search?q={skill}+online+course"
+# Function to fetch learning resources dynamically from online sources
+def fetch_learning_resources(skill):
+    search_url = f"https://www.google.com/search?q={skill}+online+courses"
     headers = {"User-Agent": "Mozilla/5.0"}
+    
     response = requests.get(search_url, headers=headers)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "html.parser")
-        links = []
-        for link in soup.find_all("a", href=True):
-            href = link.get("href")
-            if "url?q=" in href:
-                match = re.search(r'url\?q=(.*?)&', href)
-                if match:
-                    clean_url = match.group(1)
-                    if "google.com" not in clean_url:
-                        links.append(clean_url)
-        return links[:3]  # Return top 3 course links
-    return []
-
-def plot_skill_gap(missing_skills):
-    if not missing_skills:
-        st.write("✅ No skill gaps detected!")
-        return
-    skill_counts = np.random.randint(1, 10, size=len(missing_skills))
-    plt.figure(figsize=(8, 5))
-    plt.barh(missing_skills, skill_counts, color='skyblue')
-    plt.xlabel("Importance Level")
-    plt.ylabel("Missing Skills")
-    plt.title("Skill Gap Analysis")
-    st.pyplot(plt)
-
-st.title("AI Resume Skill Analyzer & Course Recommender")
-
-resume_file = st.file_uploader("Upload Resume (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
-job_file = st.file_uploader("Upload Job Description (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
-
-if resume_file and job_file:
-    resume_text = extract_text_from_file(resume_file)
-    job_desc_text = extract_text_from_file(job_file)
-    missing_skills = find_missing_skills(resume_text, job_desc_text)
+    soup = BeautifulSoup(response.text, "html.parser")
     
-    st.subheader("Skill Gap Analysis")
-    plot_skill_gap(missing_skills)
+    links = []
+    for link in soup.find_all("a", href=True):
+        url = link["href"]
+        if "http" in url and "google" not in url:  # Avoid Google internal links
+            links.append(url)
+        if len(links) >= 5:
+            break
     
-    st.subheader("Recommended Courses")
+    return links[:5]  # Return top 5 links
+
+# Function to generate a structured learning plan
+def generate_learning_plan(missing_skills):
+    schedule = []
     for skill in missing_skills:
-        courses = fetch_course_links(skill)
-        if courses:
-            st.write(f"### {skill}")
-            for course in courses:
-                st.markdown(f"- [Course Link]({course})")
+        resources = fetch_learning_resources(skill)
+        for day, resource in enumerate(resources, start=1):
+            schedule.append((f"Day {day}", skill, resource))
+    
+    return pd.DataFrame(schedule, columns=["Day", "Skill", "Resource Link"])
+
+# Streamlit UI
+st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
+st.subheader("📌 Upload your Resume and Paste the Job Description to analyze skill gaps!")
+
+# Upload resume file
+resume_file = st.file_uploader("Upload your Resume (Text File)", type=["txt"])
+job_desc = st.text_area("Paste the Job Description")
+
+if resume_file and job_desc:
+    with st.spinner("Processing..."):
+        resume_text = resume_file.read().decode("utf-8")
+        resume_skills, job_skills, missing_skills = analyze_resume(resume_text, job_desc)
+
+        st.subheader("📌 Identified Skills")
+        st.write(f"✅ **Skills in Resume:** {', '.join(resume_skills)}")
+        st.write(f"🎯 **Skills Required in Job:** {', '.join(job_skills)}")
+
+        if missing_skills:
+            st.warning(f"🚀 **You are missing these skills:** {', '.join(missing_skills)}")
+            
+            # Generate structured learning plan
+            schedule_df = generate_learning_plan(missing_skills)
+            st.subheader("📅 Personalized Learning Schedule")
+            st.dataframe(schedule_df)
+
         else:
-            st.write(f"No online courses found for {skill}")
+            st.success("✅ No missing skills detected! Your resume is well-matched.")
