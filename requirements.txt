@@ -7,3 +7,5 @@ sentence-transformers
 matplotlib
 seaborn
 torch
+transformers
+nltk
