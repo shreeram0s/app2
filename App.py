@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer
-import re
 import docx
 import pdfplumber
+import re
 import matplotlib.pyplot as plt
+from bs4 import BeautifulSoup
+from sentence_transformers import SentenceTransformer
 
 # Load NLP model
 model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -27,7 +27,8 @@ def extract_text_from_file(uploaded_file):
 
 # Function to extract skills from text
 def extract_skills(text):
-    skills_db = ["Python", "SQL", "Java", "Power BI", "JavaScript", "Machine Learning", "Deep Learning", "Django", "Flask", "React", "AWS", "Azure", "Data Science"]
+    skills_db = ["Python", "SQL", "Java", "Power BI", "JavaScript", "Machine Learning", "Deep Learning", 
+                 "Django", "Flask", "React", "AWS", "Azure", "Data Science"]
     text = text.lower()
     words = re.findall(r'\b\w+\b', text)
     return [skill for skill in skills_db if skill.lower() in words]
@@ -39,23 +40,15 @@ def analyze_resume(resume_text, job_desc_text):
     missing_skills = list(set(job_skills) - set(resume_skills))
     return resume_skills, job_skills, missing_skills
 
-# Function to fetch learning resources dynamically from Google Search using BeautifulSoup
+# Function to fetch learning resources using SerpAPI (Alternative to BeautifulSoup)
 def fetch_learning_resources(skill):
-    headers = {"User-Agent": "Mozilla/5.0"}
-    search_url = f"https://www.google.com/search?q={skill}+online+course+site:udemy.com+OR+site:coursera.org+OR+site:edx.org"
+    SERP_API_KEY = "your_serpapi_key_here"  # Replace with your SerpAPI key
+    search_url = f"https://serpapi.com/search.json?q={skill}+online+course+site:udemy.com+OR+site:coursera.org+OR+site:edx.org&api_key={SERP_API_KEY}"
 
     try:
-        response = requests.get(search_url, headers=headers)
-        soup = BeautifulSoup(response.text, "html.parser")
-        
-        links = []
-        for g in soup.find_all("a", href=True):
-            href = g["href"]
-            if "url?q=" in href and not "webcache" in href:
-                link = href.split("url?q=")[1].split("&")[0]
-                if "udemy.com" in link or "coursera.org" in link or "edx.org" in link:
-                    links.append(link)
-                    
+        response = requests.get(search_url)
+        data = response.json()
+        links = [result["link"] for result in data.get("organic_results", []) if "udemy.com" in result["link"] or "coursera.org" in result["link"] or "edx.org" in result["link"]]
         return links[:3]  # Return top 3 results
     except Exception as e:
         return []
@@ -118,7 +111,11 @@ if resume_file and job_desc_file:
                 # Generate learning plan
                 schedule_df = generate_learning_plan(missing_skills)
                 st.subheader("📅 Personalized Learning Schedule")
-                st.dataframe(schedule_df)
+
+                # Display with clickable links
+                for _, row in schedule_df.iterrows():
+                    st.markdown(f"**{row['Week']} - {row['Skill']}**: {row['Recommended Courses']}", unsafe_allow_html=True)
+
             else:
                 st.success("✅ No missing skills detected!")
         else:
