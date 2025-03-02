@@ -6,6 +6,9 @@ beautifulsoup4
 sentence-transformers
 matplotlib
 seaborn
+python-docx
+pdfplumber
 torch
 transformers
 nltk
+
