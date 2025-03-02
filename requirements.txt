@@ -8,7 +8,8 @@ matplotlib
 seaborn
 python-docx
 pdfplumber
-docx2txt
+docx2txt\
+PyPDF2
 torch
 transformers
 nltk
