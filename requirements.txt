@@ -17,4 +17,4 @@ torchaudio==2.2.0
 wordcloud==1.9.3
 textstat==0.7.3
 openai==1.2.4
-
+huggingface_hub==0.20.2   # 🔥 Add this to fix import issues
