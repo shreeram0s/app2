@@ -18,3 +18,28 @@ wordcloud==1.9.3
 textstat==0.7.3
 openai==1.2.4
 huggingface_hub==0.20.2   # 🔥 Add this to fix import issues
+# Core Packages
+streamlit==1.32.0
+pandas==2.2.0
+numpy==1.26.4
+matplotlib==3.8.2
+seaborn==0.13.2
+beautifulsoup4==4.12.3
+lxml==5.1.0
+requests==2.31.0
+
+# NLP and Sentence Transformers
+torch==2.2.0
+transformers==4.38.1
+sentencepiece==0.1.99
+scikit-learn==1.4.1
+tqdm==4.66.2
+
+# Install latest sentence-transformers from GitHub
+git+https://github.com/UKPLab/sentence-transformers.git
+
+# Web Scraping (for dynamic course recommendations)
+selenium==4.19.0
+
+# Misc
+setuptools==69.1.0
