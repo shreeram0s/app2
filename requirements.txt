@@ -8,6 +8,7 @@ matplotlib
 seaborn
 python-docx
 pdfplumber
+docx2txt
 torch
 transformers
 nltk
