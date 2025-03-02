@@ -1,122 +1,127 @@
 import streamlit as st
-import pandas as pd
-import requests
-import docx
 import pdfplumber
-import re
+import docx
+import requests
+import json
 import matplotlib.pyplot as plt
+import spacy
+import pandas as pd
+from collections import Counter
+import tiktoken  # For better tokenization
 from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer
 
-# Load NLP model
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# Load Spacy NLP model for Named Entity Recognition (NER)
+nlp = spacy.load("en_core_web_sm")
 
-# Function to extract text from different file formats
+# Function to extract text from resume and job description
 def extract_text_from_file(uploaded_file):
-    file_extension = uploaded_file.name.split(".")[-1].lower()
-    
-    if file_extension == "txt":
-        return uploaded_file.read().decode("utf-8", errors="ignore")
-    elif file_extension == "docx":
-        doc = docx.Document(uploaded_file)
-        return "\n".join([para.text for para in doc.paragraphs])
-    elif file_extension == "pdf":
-        with pdfplumber.open(uploaded_file) as pdf:
-            return "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+    if uploaded_file is not None:
+        file_extension = uploaded_file.name.split(".")[-1]
+        if file_extension == "pdf":
+            with pdfplumber.open(uploaded_file) as pdf:
+                return "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+        elif file_extension in ["docx", "doc"]:
+            doc = docx.Document(uploaded_file)
+            return "\n".join([para.text for para in doc.paragraphs])
+        elif file_extension == "txt":
+            return uploaded_file.read().decode("utf-8")
     return None
 
-# Function to extract skills from text
+# Function to extract relevant skills using NLP
 def extract_skills(text):
-    skills_db = ["Python", "SQL", "Java", "Power BI", "JavaScript", "Machine Learning", "Deep Learning", 
-                 "Django", "Flask", "React", "AWS", "Azure", "Data Science"]
-    text = text.lower()
-    words = re.findall(r'\b\w+\b', text)
-    return [skill for skill in skills_db if skill.lower() in words]
+    doc = nlp(text)
+    skills = []
+    
+    for ent in doc.ents:
+        if ent.label_ in ["ORG", "PRODUCT", "SKILL"]:
+            skills.append(ent.text.lower())
+    
+    # Use Tiktoken tokenizer to refine the extracted skills
+    encoding = tiktoken.get_encoding("cl100k_base")
+    tokenized_skills = [word for word in encoding.encode(" ".join(skills)) if word.isalpha()]
+    
+    return list(set(tokenized_skills))
 
-# Function to compare resume and job description
-def analyze_resume(resume_text, job_desc_text):
+# Function to identify missing skills
+def find_missing_skills(resume_text, job_desc_text):
     resume_skills = extract_skills(resume_text)
     job_skills = extract_skills(job_desc_text)
+
     missing_skills = list(set(job_skills) - set(resume_skills))
-    return resume_skills, job_skills, missing_skills
+    return missing_skills
 
-# Function to fetch learning resources using SerpAPI (Alternative to BeautifulSoup)
-def fetch_learning_resources(skill):
-    SERP_API_KEY = "your_serpapi_key_here"  # Replace with your SerpAPI key
-    search_url = f"https://serpapi.com/search.json?q={skill}+online+course+site:udemy.com+OR+site:coursera.org+OR+site:edx.org&api_key={SERP_API_KEY}"
+# Function to fetch online course links using SerpAPI
+def fetch_course_links(skill):
+    serp_api_key = "YOUR_SERPAPI_KEY"  # Replace with your SerpAPI key
+    search_query = f"best online course for {skill}"
+    
+    params = {
+        "engine": "google",
+        "q": search_query,
+        "api_key": serp_api_key
+    }
+    
+    response = requests.get("https://serpapi.com/search", params=params)
+    results = json.loads(response.text)
 
-    try:
-        response = requests.get(search_url)
-        data = response.json()
-        links = [result["link"] for result in data.get("organic_results", []) if "udemy.com" in result["link"] or "coursera.org" in result["link"] or "edx.org" in result["link"]]
-        return links[:3]  # Return top 3 results
-    except Exception as e:
-        return []
+    links = []
+    if "organic_results" in results:
+        for result in results["organic_results"][:3]:  # Get top 3 links
+            links.append(result["link"])
+    
+    return links if links else ["No resources found"]
 
 # Function to generate a structured learning plan
 def generate_learning_plan(missing_skills):
-    schedule = []
-    for i, skill in enumerate(missing_skills, start=1):
-        resources = fetch_learning_resources(skill)
-        clickable_links = [f"[Course {j+1}]({link})" for j, link in enumerate(resources)]
-        schedule.append((f"Week {i}", skill, ", ".join(clickable_links) if clickable_links else "No resources found"))
-    
-    return pd.DataFrame(schedule, columns=["Week", "Skill", "Recommended Courses"])
-
-# Function to visualize skill gaps using a bar chart
-def plot_skill_gap(resume_skills, job_skills):
-    all_skills = set(resume_skills + job_skills)
-    resume_counts = [1 if skill in resume_skills else 0 for skill in all_skills]
-    job_counts = [1 if skill in job_skills else 0 for skill in all_skills]
-
-    df = pd.DataFrame({"Skill": list(all_skills), "Resume": resume_counts, "Job Description": job_counts})
-    df.set_index("Skill", inplace=True)
-    df.plot(kind="bar", figsize=(8, 4), color=["skyblue", "salmon"])
-    
-    plt.title("Skill Comparison")
-    plt.ylabel("Presence (1 = Found, 0 = Not Found)")
-    plt.xticks(rotation=45)
-    st.pyplot(plt)
+    learning_plan = {}
+    for index, skill in enumerate(missing_skills, start=1):
+        courses = fetch_course_links(skill)
+        learning_plan[f"Week {index} - {skill}"] = courses
+    return learning_plan
 
 # Streamlit UI
-st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
+st.title("📌 Advanced AI Resume Analyzer")
 
-# Upload files
-resume_file = st.file_uploader("Upload your Resume", type=["pdf", "docx", "txt"])
-job_desc_file = st.file_uploader("Upload Job Description", type=["pdf", "docx", "txt"])
+st.sidebar.header("Upload Your Files")
+uploaded_resume = st.sidebar.file_uploader("Upload Resume (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
+uploaded_job_desc = st.sidebar.file_uploader("Upload Job Description (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 
-if resume_file and job_desc_file:
-    with st.spinner("Processing..."):
-        resume_text = extract_text_from_file(resume_file)
-        job_desc_text = extract_text_from_file(job_desc_file)
+if uploaded_resume and uploaded_job_desc:
+    resume_text = extract_text_from_file(uploaded_resume)
+    job_desc_text = extract_text_from_file(uploaded_job_desc)
+
+    if resume_text and job_desc_text:
+        st.subheader("📄 Resume & Job Description Summary")
+        st.write(f"**Resume Summary:** {resume_text[:500]}...")
+        st.write(f"**Job Description Summary:** {job_desc_text[:500]}...")
+
+        missing_skills = find_missing_skills(resume_text, job_desc_text)
         
-        if resume_text and job_desc_text:
-            resume_skills, job_skills, missing_skills = analyze_resume(resume_text, job_desc_text)
+        if missing_skills:
+            st.subheader("🚀 Skills You Need to Learn")
+            st.warning(f"You need to learn: {', '.join(missing_skills)}")
 
-            # Display summary of resume and job description
-            st.subheader("📄 Resume Summary")
-            st.write(resume_text[:500] + "...")  # Display first 500 characters
-            
-            st.subheader("📜 Job Description Summary")
-            st.write(job_desc_text[:500] + "...")  # Display first 500 characters
-            
-            # Display skill comparison
-            st.subheader("📌 Skill Comparison")
-            plot_skill_gap(resume_skills, job_skills)
+            # Generate Learning Plan
+            learning_plan = generate_learning_plan(missing_skills)
 
-            st.subheader("🚀 Missing Skills")
-            if missing_skills:
-                st.warning(f"You need to learn: {', '.join(missing_skills)}")
+            st.subheader("📅 Personalized Learning Schedule")
+            for week, courses in learning_plan.items():
+                st.markdown(f"### {week}")
+                for course in courses:
+                    if course == "No resources found":
+                        st.write("❌ No resources found")
+                    else:
+                        st.markdown(f"✅ [Course Link]({course})")
 
-                # Generate learning plan
-                schedule_df = generate_learning_plan(missing_skills)
-                st.subheader("📅 Personalized Learning Schedule")
+            # Skill Gap Visualization
+            st.subheader("📊 Skill Gap Analysis")
+            skill_counts = {"Possessed": len(extract_skills(resume_text)), "Missing": len(missing_skills)}
+            plt.figure(figsize=(5, 3))
+            plt.bar(skill_counts.keys(), skill_counts.values(), color=["green", "red"])
+            plt.xlabel("Skills")
+            plt.ylabel("Count")
+            plt.title("Skill Gap Analysis")
+            st.pyplot(plt)
 
-                # Display with clickable links
-                for _, row in schedule_df.iterrows():
-                    st.markdown(f"**{row['Week']} - {row['Skill']}**: {row['Recommended Courses']}", unsafe_allow_html=True)
-
-            else:
-                st.success("✅ No missing skills detected!")
         else:
-            st.error("⚠️ Unable to extract text from files.")
+            st.success("Your resume matches all required skills! ✅")
