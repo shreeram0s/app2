@@ -1,111 +1,79 @@
 import streamlit as st
 import pandas as pd
-import io
-import PyPDF2
-import re
-import matplotlib.pyplot as plt
+import numpy as np
+import requests
+from bs4 import BeautifulSoup
+from sentence_transformers import SentenceTransformer, util
 
-# Predefined learning resources for missing skills
-learning_resources = {
-    "SQL": [
-        ("Day 1", "Introduction to Databases & SQL Basics", "https://www.coursera.org/learn/sql-for-data-science"),
-        ("Day 2", "SELECT, WHERE, and Filtering Data", "https://www.w3schools.com/sql/"),
-        ("Day 3", "Aggregation & Joins", "https://www.kaggle.com/learn/advanced-sql"),
-        ("Day 4", "Writing Complex Queries", "https://www.udemy.com/course/sql-intermediate/"),
-        ("Day 5", "Hands-on Practice: Solve 10 SQL Problems", "https://leetcode.com/problemset/database/"),
-        ("Day 6", "SQL Project: Building a Mini Database", "https://www.datacamp.com/"),
-        ("Day 7", "Revision & Mock Test", "https://www.testdome.com/")
-    ],
-    "Power BI": [
-        ("Day 1", "Introduction to Power BI", "https://www.udemy.com/course/microsoft-power-bi/"),
-        ("Day 2", "Connecting Data Sources", "https://www.youtube.com/watch?v=JgR29b8L7N4"),
-        ("Day 3", "Creating Interactive Dashboards", "https://www.coursera.org/learn/power-bi-dashboards"),
-        ("Day 4", "Hands-on Practice: Build a Sales Dashboard", "https://www.datacamp.com/"),
-        ("Day 5", "Advanced Visualizations & DAX", "https://www.sqlbi.com/"),
-        ("Day 6", "Final Power BI Project", "https://www.kaggle.com/"),
-        ("Day 7", "Review & Feedback", "https://www.linkedin.com/")
-    ],
-    "Python": [
-        ("Day 1", "Python Basics: Variables, Data Types", "https://www.w3schools.com/python/"),
-        ("Day 2", "Loops and Conditionals", "https://www.udemy.com/course/python-for-beginners-learn-programming-from-scratch/"),
-        ("Day 3", "Functions & Modules", "https://www.coursera.org/learn/python"),
-        ("Day 4", "Object-Oriented Programming", "https://realpython.com/python-oop/"),
-        ("Day 5", "Data Analysis with Pandas", "https://www.datacamp.com/courses/pandas-foundations"),
-        ("Day 6", "Python Mini-Project", "https://www.kaggle.com/"),
-        ("Day 7", "Final Review & Mock Tests", "https://www.hackerrank.com/domains/tutorials/10-days-of-python")
-    ]
-}
+# Load the pre-trained NLP model for semantic comparison
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Function to extract text from PDF
-def extract_text_from_pdf(uploaded_file):
-    pdf_reader = PyPDF2.PdfReader(uploaded_file)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text() + " "
-    return text
-
-# Function to extract skills using regex
+# Function to extract skills from a given text using NLP
 def extract_skills(text):
-    skills = {"SQL", "Power BI", "Python"}  # Expand this with more skills
-    found_skills = {skill for skill in skills if re.search(rf"\b{skill}\b", text, re.IGNORECASE)}
-    return found_skills
+    skills_db = ["Python", "SQL", "Java", "Power BI", "JavaScript", "Machine Learning", "Deep Learning", "Django", "Flask", "React", "AWS", "Azure", "Data Science"]
+    extracted_skills = [skill for skill in skills_db if skill.lower() in text.lower()]
+    return extracted_skills
 
-# Function to identify missing skills
-def find_missing_skills(resume_text, job_desc_text):
+# Function to compare resume and job description
+def analyze_resume(resume_text, job_desc_text):
     resume_skills = extract_skills(resume_text)
     job_skills = extract_skills(job_desc_text)
-    missing_skills = job_skills - resume_skills
-    return list(missing_skills), list(resume_skills), list(job_skills)
+    missing_skills = list(set(job_skills) - set(resume_skills))
+    
+    return resume_skills, job_skills, missing_skills
+
+# Function to fetch learning resources dynamically from online sources
+def fetch_learning_resources(skill):
+    search_url = f"https://www.google.com/search?q={skill}+online+courses"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    response = requests.get(search_url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    links = []
+    for link in soup.find_all("a", href=True):
+        url = link["href"]
+        if "http" in url and "google" not in url:  # Avoid Google internal links
+            links.append(url)
+        if len(links) >= 5:
+            break
+    
+    return links[:5]  # Return top 5 links
 
 # Function to generate a structured learning plan
 def generate_learning_plan(missing_skills):
     schedule = []
     for skill in missing_skills:
-        if skill in learning_resources:
-            schedule.extend(learning_resources[skill])
-    return pd.DataFrame(schedule, columns=["Day", "Topic", "Resource Link"])
+        resources = fetch_learning_resources(skill)
+        for day, resource in enumerate(resources, start=1):
+            schedule.append((f"Day {day}", skill, resource))
+    
+    return pd.DataFrame(schedule, columns=["Day", "Skill", "Resource Link"])
 
 # Streamlit UI
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
-st.subheader("📌 Upload your resume and job description to identify skill gaps!")
+st.subheader("📌 Upload your Resume and Paste the Job Description to analyze skill gaps!")
 
-# Upload resume
-resume_file = st.file_uploader("Upload your Resume (PDF)", type=["pdf"])
+# Upload resume file
+resume_file = st.file_uploader("Upload your Resume (Text File)", type=["txt"])
 job_desc = st.text_area("Paste the Job Description")
 
 if resume_file and job_desc:
     with st.spinner("Processing..."):
-        resume_text = extract_text_from_pdf(resume_file)
-        missing_skills, resume_skills, job_skills = find_missing_skills(resume_text, job_desc)
+        resume_text = resume_file.read().decode("utf-8")
+        resume_skills, job_skills, missing_skills = analyze_resume(resume_text, job_desc)
 
-        # Display brief descriptions of resume and job description
-        st.subheader("🔎 Resume Summary")
-        st.write(resume_text[:500] + "...")  # Display first 500 characters
-
-        st.subheader("📄 Job Description Overview")
-        st.write(job_desc[:500] + "...")  # Display first 500 characters
-
-        # Skill matching visualization
-        st.subheader("📊 Skill Matching Visualization")
-        skill_labels = ["Matched Skills", "Missing Skills"]
-        skill_counts = [len(resume_skills), len(missing_skills)]
-
-        fig, ax = plt.subplots()
-        ax.bar(skill_labels, skill_counts, color=["green", "red"])
-        ax.set_ylabel("Count")
-        ax.set_title("Resume vs. Job Description Skills")
-        st.pyplot(fig)
+        st.subheader("📌 Identified Skills")
+        st.write(f"✅ **Skills in Resume:** {', '.join(resume_skills)}")
+        st.write(f"🎯 **Skills Required in Job:** {', '.join(job_skills)}")
 
         if missing_skills:
-            st.success(f"🔍 Missing Skills Identified: {', '.join(missing_skills)}")
-
-            # Recommendations based on missing skills
-            st.subheader("📌 Recommendations")
-            st.write("To improve your resume, consider learning these missing skills through the suggested courses below.")
-
-            # Generate learning plan
+            st.warning(f"🚀 **You are missing these skills:** {', '.join(missing_skills)}")
+            
+            # Generate structured learning plan
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
             st.dataframe(schedule_df)
+
         else:
             st.success("✅ No missing skills detected! Your resume is well-matched.")
