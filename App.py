@@ -4,14 +4,16 @@ import docx
 import requests
 import json
 import matplotlib.pyplot as plt
-import spacy
+import nltk
+import re
 import pandas as pd
 from collections import Counter
-import tiktoken  # For better tokenization
 from bs4 import BeautifulSoup
+from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Load Spacy NLP model for Named Entity Recognition (NER)
-nlp = spacy.load("en_core_web_sm")
+# Download necessary NLTK datasets
+nltk.download("punkt")
+nltk.download("averaged_perceptron_tagger")
 
 # Function to extract text from resume and job description
 def extract_text_from_file(uploaded_file):
@@ -27,20 +29,25 @@ def extract_text_from_file(uploaded_file):
             return uploaded_file.read().decode("utf-8")
     return None
 
-# Function to extract relevant skills using NLP
+# Function to clean and preprocess text
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r"[^a-zA-Z0-9\s]", "", text)  # Remove special characters
+    return text
+
+# Function to dynamically extract relevant skills using NLTK & TF-IDF
 def extract_skills(text):
-    doc = nlp(text)
-    skills = []
+    text = clean_text(text)
+    words = nltk.word_tokenize(text)
+    tagged_words = nltk.pos_tag(words)  # Identify parts of speech
+    skills = [word for word, tag in tagged_words if tag in ["NN", "NNS", "JJ"]]  # Extract nouns and adjectives
     
-    for ent in doc.ents:
-        if ent.label_ in ["ORG", "PRODUCT", "SKILL"]:
-            skills.append(ent.text.lower())
-    
-    # Use Tiktoken tokenizer to refine the extracted skills
-    encoding = tiktoken.get_encoding("cl100k_base")
-    tokenized_skills = [word for word in encoding.encode(" ".join(skills)) if word.isalpha()]
-    
-    return list(set(tokenized_skills))
+    # Use TF-IDF to identify most important words
+    vectorizer = TfidfVectorizer(stop_words="english", max_features=20)
+    tfidf_matrix = vectorizer.fit_transform([" ".join(skills)])
+    extracted_skills = vectorizer.get_feature_names_out()
+
+    return list(set(extracted_skills))
 
 # Function to identify missing skills
 def find_missing_skills(resume_text, job_desc_text):
@@ -80,7 +87,7 @@ def generate_learning_plan(missing_skills):
     return learning_plan
 
 # Streamlit UI
-st.title("📌 Advanced AI Resume Analyzer")
+st.title("📌 AI Resume Analyzer (Advanced NLP)")
 
 st.sidebar.header("Upload Your Files")
 uploaded_resume = st.sidebar.file_uploader("Upload Resume (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
@@ -91,37 +98,29 @@ if uploaded_resume and uploaded_job_desc:
     job_desc_text = extract_text_from_file(uploaded_job_desc)
 
     if resume_text and job_desc_text:
-        st.subheader("📄 Resume & Job Description Summary")
-        st.write(f"**Resume Summary:** {resume_text[:500]}...")
-        st.write(f"**Job Description Summary:** {job_desc_text[:500]}...")
-
         missing_skills = find_missing_skills(resume_text, job_desc_text)
-        
+
         if missing_skills:
-            st.subheader("🚀 Skills You Need to Learn")
-            st.warning(f"You need to learn: {', '.join(missing_skills)}")
+            st.subheader("🚀 Missing Skills Identified")
+            st.write(missing_skills)
 
             # Generate Learning Plan
             learning_plan = generate_learning_plan(missing_skills)
+            st.subheader("📚 Personalized Learning Schedule")
 
-            st.subheader("📅 Personalized Learning Schedule")
             for week, courses in learning_plan.items():
-                st.markdown(f"### {week}")
+                st.write(f"**{week}**")
                 for course in courses:
-                    if course == "No resources found":
-                        st.write("❌ No resources found")
-                    else:
-                        st.markdown(f"✅ [Course Link]({course})")
+                    st.markdown(f"[🔗 {course}]({course})", unsafe_allow_html=True)
 
-            # Skill Gap Visualization
+            # Visualizing Skill Gaps
             st.subheader("📊 Skill Gap Analysis")
-            skill_counts = {"Possessed": len(extract_skills(resume_text)), "Missing": len(missing_skills)}
-            plt.figure(figsize=(5, 3))
-            plt.bar(skill_counts.keys(), skill_counts.values(), color=["green", "red"])
-            plt.xlabel("Skills")
-            plt.ylabel("Count")
-            plt.title("Skill Gap Analysis")
-            st.pyplot(plt)
+            fig, ax = plt.subplots()
+            ax.bar(missing_skills, range(len(missing_skills)), color="blue")
+            ax.set_ylabel("Importance Level")
+            ax.set_title("Skill Gap Analysis")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
 
         else:
-            st.success("Your resume matches all required skills! ✅")
+            st.success("✅ Your resume matches all required job skills!")
