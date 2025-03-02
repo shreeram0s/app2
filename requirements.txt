@@ -10,7 +10,6 @@ matplotlib
 seaborn
 python-docx
 pdfplumber
-docx2txt\
+docx2txt
 transformers
 nltk
-
