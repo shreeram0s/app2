@@ -1,4 +1,6 @@
 streamlit
+PyPDF2
+torch
 pandas
 numpy
 requests
@@ -9,8 +11,6 @@ seaborn
 python-docx
 pdfplumber
 docx2txt\
-PyPDF2
-torch
 transformers
 nltk
 
