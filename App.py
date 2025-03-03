@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import requests
 from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import SentenceTransformer
 
 # Load the pre-trained NLP model for semantic comparison
 model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -22,33 +21,32 @@ def analyze_resume(resume_text, job_desc_text):
     
     return resume_skills, job_skills, missing_skills
 
-# Function to fetch learning resources dynamically from online sources
+# Function to fetch online learning resources dynamically
 def fetch_learning_resources(skill):
-    search_url = f"https://www.google.com/search?q={skill}+online+courses"
+    search_url = f"https://www.google.com/search?q={skill}+best+online+courses"
     headers = {"User-Agent": "Mozilla/5.0"}
-    
     response = requests.get(search_url, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
     
     links = []
     for link in soup.find_all("a", href=True):
         url = link["href"]
-        if "http" in url and "google" not in url:  # Avoid Google internal links
+        if "http" in url and "google" not in url:
             links.append(url)
         if len(links) >= 5:
             break
     
-    return links[:5]  # Return top 5 links
+    return links[:5]
 
 # Function to generate a structured learning plan
 def generate_learning_plan(missing_skills):
     schedule = []
     for skill in missing_skills:
         resources = fetch_learning_resources(skill)
-        for day, resource in enumerate(resources, start=1):
-            schedule.append((f"Day {day}", skill, resource))
+        for resource in resources:
+            schedule.append((skill, resource))
     
-    return pd.DataFrame(schedule, columns=["Day", "Skill", "Resource Link"])
+    return pd.DataFrame(schedule, columns=["Skill", "Learning Resource"])
 
 # Streamlit UI
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
