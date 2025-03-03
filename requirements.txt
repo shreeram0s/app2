@@ -2,7 +2,9 @@ streamlit
 flask
 requests
 beautifulsoup4
-google-api-python-client
+
+# APIs & Web Scraping
+google-api-python-client  
 
 # File Handling & Parsing
 PyPDF2
