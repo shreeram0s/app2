@@ -4,26 +4,22 @@ import requests
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 
-# Load the pre-trained NLP model for semantic comparison
+# Load NLP model for skill extraction
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Function to extract skills from a given text using NLP
 def extract_skills(text):
     skills_db = ["Python", "SQL", "Java", "Power BI", "JavaScript", "Machine Learning", "Deep Learning", "Django", "Flask", "React", "AWS", "Azure", "Data Science"]
-    extracted_skills = [skill for skill in skills_db if skill.lower() in text.lower()]
-    return extracted_skills
+    return [skill for skill in skills_db if skill.lower() in text.lower()]
 
-# Function to compare resume and job description
 def analyze_resume(resume_text, job_desc_text):
     resume_skills = extract_skills(resume_text)
     job_skills = extract_skills(job_desc_text)
     missing_skills = list(set(job_skills) - set(resume_skills))
-    
     return resume_skills, job_skills, missing_skills
 
-# Function to fetch online learning resources dynamically from trusted sources
 def fetch_learning_resources(skill):
-    search_url = f"https://www.google.com/search?q={skill}+course+site%3Acoursera.org+OR+site%3Audemy.com+OR+site%3Aedx.org"
+    search_query = f"{skill} online course site:coursera.org OR site:udemy.com OR site:edx.org"
+    search_url = f"https://www.google.com/search?q={search_query}"
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(search_url, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -33,26 +29,22 @@ def fetch_learning_resources(skill):
         url = link["href"]
         if "http" in url and ("coursera.org" in url or "udemy.com" in url or "edx.org" in url):
             links.append(url)
-        if len(links) >= 5:
+        if len(links) >= 3:
             break
     
-    return links[:5]
+    return links[:3]
 
-# Function to generate a structured learning plan
 def generate_learning_plan(missing_skills):
     schedule = []
     for skill in missing_skills:
         resources = fetch_learning_resources(skill)
-        for resource in resources:
-            schedule.append((skill, resource))
-    
+        schedule.append((skill, resources[0] if resources else "No course found"))
     return pd.DataFrame(schedule, columns=["Skill", "Learning Resource"])
 
 # Streamlit UI
 st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
 st.subheader("📌 Upload your Resume and Paste the Job Description to analyze skill gaps!")
 
-# Upload resume file
 resume_file = st.file_uploader("Upload your Resume (Text File)", type=["txt"])
 job_desc = st.text_area("Paste the Job Description")
 
@@ -60,18 +52,15 @@ if resume_file and job_desc:
     with st.spinner("Processing..."):
         resume_text = resume_file.read().decode("utf-8")
         resume_skills, job_skills, missing_skills = analyze_resume(resume_text, job_desc)
-
+        
         st.subheader("📌 Identified Skills")
         st.write(f"✅ **Skills in Resume:** {', '.join(resume_skills)}")
         st.write(f"🎯 **Skills Required in Job:** {', '.join(job_skills)}")
 
         if missing_skills:
             st.warning(f"🚀 **You are missing these skills:** {', '.join(missing_skills)}")
-            
-            # Generate structured learning plan
             schedule_df = generate_learning_plan(missing_skills)
             st.subheader("📅 Personalized Learning Schedule")
             st.dataframe(schedule_df)
-
         else:
             st.success("✅ No missing skills detected! Your resume is well-matched.")
