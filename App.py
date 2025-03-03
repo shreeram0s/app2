@@ -6,12 +6,35 @@ import pdfplumber
 import docx2txt
 import numpy as np
 from sentence_transformers import SentenceTransformer
+import googleapiclient.discovery
 
 # Load AI Model
 st_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# API for fetching courses (Replace with actual API link)
-COURSE_API_URL = "https://api.example.com/courses"
+# YouTube API Key (Replace with a new secured key)
+YOUTUBE_API_KEY = "REPLACE_WITH_YOUR_NEW_API_KEY"
+YOUTUBE_API_SERVICE_NAME = "youtube"
+YOUTUBE_API_VERSION = "v3"
+
+# Function to fetch courses from YouTube
+def fetch_youtube_courses(skill):
+    youtube = googleapiclient.discovery.build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=YOUTUBE_API_KEY)
+    request = youtube.search().list(
+        q=f"{skill} course",
+        part="snippet",
+        maxResults=5,
+        type="video"
+    )
+    response = request.execute()
+    
+    courses = []
+    for item in response["items"]:
+        courses.append({
+            "Title": item["snippet"]["title"],
+            "Channel": item["snippet"]["channelTitle"],
+            "Video Link": f'https://www.youtube.com/watch?v={item["id"]["videoId"]}'
+        })
+    return courses
 
 # Function to extract text from uploaded file
 def extract_text_from_file(uploaded_file):
@@ -34,30 +57,15 @@ def extract_text_from_file(uploaded_file):
 # Function to extract skills from text
 def extract_skills(text):
     skills_list = ["Python", "Machine Learning", "Data Science", "AI", "Deep Learning", "NLP", "SQL", "Power BI", "Tableau", "TensorFlow", "Pandas", "Numpy"]
-    
-    found_skills = [skill for skill in skills_list if skill.lower() in text.lower()]
-    return found_skills
+    return [skill for skill in skills_list if skill.lower() in text.lower()]
 
 # Function to find missing skills
 def find_missing_skills(resume_skills, job_skills):
     return list(set(job_skills) - set(resume_skills))
 
-# Fetch online courses from API
-def fetch_courses():
-    try:
-        response = requests.get(COURSE_API_URL)
-        if response.status_code == 200:
-            return response.json()  # Return JSON response
-        else:
-            st.error(f"Failed to fetch courses: {response.status_code}")
-            return None
-    except Exception as e:
-        st.error(f"Error fetching data: {e}")
-        return None
-
 # Streamlit UI
 st.title("📄 AI Resume Analyzer & Skill Enhancer")
-st.write("Upload your Resume and Job Description to analyze missing skills and get online courses!")
+st.write("Upload your Resume and Job Description to analyze missing skills and get YouTube course recommendations!")
 
 # File Uploaders
 resume_file = st.file_uploader("📄 Upload Resume (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
@@ -84,12 +92,16 @@ if st.button("Analyze Skills"):
                 st.success("You have all the required skills!")
 
 if st.button("📚 Get Recommended Courses"):
-    courses = fetch_courses()
-    
-    if courses:
-        df = pd.DataFrame(courses)  # Convert JSON to DataFrame
-        st.table(df)  # Display as table
+    if 'missing_skills' in locals() and missing_skills:
+        all_courses = []
+        for skill in missing_skills:
+            courses = fetch_youtube_courses(skill)
+            all_courses.extend(courses)
+        
+        if all_courses:
+            df = pd.DataFrame(all_courses)
+            st.table(df)  # Display courses as a table
+        else:
+            st.write("No courses found.")
     else:
-        st.write("No courses found.")
-
-# Run Streamlit with: streamlit run app.py
+        st.write("Analyze skills first to get recommendations!")
