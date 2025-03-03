@@ -1,15 +1,24 @@
 streamlit
-PyPDF2
-torch
-pandas
-numpy
+flask
 requests
 beautifulsoup4
+google-api-python-client
+
+# File Handling & Parsing
+PyPDF2
+pdfplumber
+python-docx
+docx2txt
+pdfminer.six
+
+# Machine Learning & NLP
+torch
+transformers
 sentence-transformers
+nltk
+
+# Data Processing & Visualization
+pandas
+numpy
 matplotlib
 seaborn
-python-docx
-pdfplumber
-docx2txt
-transformers
-nltk
