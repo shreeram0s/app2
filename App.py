@@ -1,66 +1,103 @@
-import streamlit as st
-import pandas as pd
+import os
 import requests
-from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer
+import docx2txt
+import pdfminer.high_level
+import PyPDF2
+from flask import Flask, render_template, request
+from sentence_transformers import SentenceTransformer, util
+from googleapiclient.discovery import build
 
-# Load NLP model for skill extraction
-model = SentenceTransformer("all-MiniLM-L6-v2")
+app = Flask(__name__)
+
+# Udemy API Details (Replace with actual API Key)
+UDEMY_API_URL = "https://www.udemy.com/api-2.0/courses/"
+UDEMY_API_KEY = "YOUR_UDEMY_API_KEY"  # Replace with actual API key
+
+# Google Search API Details (Backup Option)
+GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY"  # Replace with actual key
+SEARCH_ENGINE_ID = "YOUR_SEARCH_ENGINE_ID"  # Replace with actual ID
+
+# Load Pre-trained Sentence Transformer Model
+model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
+
+
+def extract_text(file):
+    """Extract text from PDF, DOCX, or TXT."""
+    file_ext = file.filename.split(".")[-1].lower()
+
+    if file_ext == "pdf":
+        return pdfminer.high_level.extract_text(file)
+    elif file_ext == "docx":
+        return docx2txt.process(file)
+    elif file_ext == "txt":
+        return file.read().decode("utf-8")
+    else:
+        return ""
+
 
 def extract_skills(text):
-    skills_db = ["Python", "SQL", "Java", "Power BI", "JavaScript", "Machine Learning", "Deep Learning", "Django", "Flask", "React", "AWS", "Azure", "Data Science"]
-    return [skill for skill in skills_db if skill.lower() in text.lower()]
+    """Extract skills from resume using sentence transformers."""
+    predefined_skills = [
+        "Python", "SQL", "Machine Learning", "Power BI", "Data Science",
+        "AWS", "Java", "JavaScript", "React"
+    ]
 
-def analyze_resume(resume_text, job_desc_text):
-    resume_skills = extract_skills(resume_text)
-    job_skills = extract_skills(job_desc_text)
-    missing_skills = list(set(job_skills) - set(resume_skills))
-    return resume_skills, job_skills, missing_skills
+    extracted_skills = []
+    for skill in predefined_skills:
+        similarity = util.pytorch_cos_sim(model.encode(text), model.encode(skill))
+        if similarity.item() > 0.5:  # Threshold for skill detection
+            extracted_skills.append(skill)
 
-def fetch_learning_resources(skill):
-    search_query = f"{skill} online course site:coursera.org OR site:udemy.com OR site:edx.org"
-    search_url = f"https://www.google.com/search?q={search_query}"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(search_url, headers=headers)
-    soup = BeautifulSoup(response.text, "html.parser")
-    
-    links = []
-    for link in soup.find_all("a", href=True):
-        url = link["href"]
-        if "http" in url and ("coursera.org" in url or "udemy.com" in url or "edx.org" in url):
-            links.append(url)
-        if len(links) >= 3:
-            break
-    
-    return links[:3]
+    return extracted_skills
 
-def generate_learning_plan(missing_skills):
-    schedule = []
-    for skill in missing_skills:
-        resources = fetch_learning_resources(skill)
-        schedule.append((skill, resources[0] if resources else "No course found"))
-    return pd.DataFrame(schedule, columns=["Skill", "Learning Resource"])
 
-# Streamlit UI
-st.title("📄 AI Resume Analyzer - Skill Gap Learning Plan")
-st.subheader("📌 Upload your Resume and Paste the Job Description to analyze skill gaps!")
+def fetch_udemy_courses(skill):
+    """Fetch top courses from Udemy for a given skill."""
+    headers = {"Authorization": f"Bearer {UDEMY_API_KEY}"}
+    params = {"search": skill, "page_size": 5}
 
-resume_file = st.file_uploader("Upload your Resume (Text File)", type=["txt"])
-job_desc = st.text_area("Paste the Job Description")
+    response = requests.get(UDEMY_API_URL, headers=headers, params=params)
 
-if resume_file and job_desc:
-    with st.spinner("Processing..."):
-        resume_text = resume_file.read().decode("utf-8")
-        resume_skills, job_skills, missing_skills = analyze_resume(resume_text, job_desc)
-        
-        st.subheader("📌 Identified Skills")
-        st.write(f"✅ **Skills in Resume:** {', '.join(resume_skills)}")
-        st.write(f"🎯 **Skills Required in Job:** {', '.join(job_skills)}")
+    if response.status_code == 200:
+        courses = response.json().get("results", [])
+        return [(course["title"], course["url"]) for course in courses]
+    else:
+        return fetch_google_courses(skill)  # Fallback to Google if Udemy fails
 
-        if missing_skills:
-            st.warning(f"🚀 **You are missing these skills:** {', '.join(missing_skills)}")
-            schedule_df = generate_learning_plan(missing_skills)
-            st.subheader("📅 Personalized Learning Schedule")
-            st.dataframe(schedule_df)
-        else:
-            st.success("✅ No missing skills detected! Your resume is well-matched.")
+
+def fetch_google_courses(skill):
+    """Fetch top courses from Google Search if Udemy API fails."""
+    service = build("customsearch", "v1", developerKey=GOOGLE_API_KEY)
+    query = f"best {skill} online course site:udemy.com OR site:coursera.org OR site:edx.org"
+
+    response = service.cse().list(q=query, cx=SEARCH_ENGINE_ID, num=5).execute()
+    results = response.get("items", [])
+
+    return [(item["title"], item["link"]) for item in results]
+
+
+@app.route("/", methods=["GET", "POST"])
+def home():
+    missing_skills = []
+    learning_schedule = {}
+
+    if request.method == "POST":
+        resume_file = request.files["resume"]
+        job_desc_file = request.files["job_desc"]
+
+        if resume_file and job_desc_file:
+            resume_text = extract_text(resume_file)
+            job_desc_text = extract_text(job_desc_file)
+
+            resume_skills = set(extract_skills(resume_text))
+            job_skills = set(extract_skills(job_desc_text))
+
+            missing_skills = list(job_skills - resume_skills)  # Skills required but not in resume
+
+            learning_schedule = {skill: fetch_udemy_courses(skill) for skill in missing_skills}
+
+    return render_template("index.html", learning_schedule=learning_schedule, missing_skills=missing_skills)
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
