@@ -16,6 +16,11 @@ YOUTUBE_API_KEY = "REPLACE_WITH_YOUR_NEW_API_KEY"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
+# Initialize session state for tracking analysis
+if "skills_analyzed" not in st.session_state:
+    st.session_state.skills_analyzed = False
+    st.session_state.missing_skills = []
+
 # Function to fetch courses from YouTube
 def fetch_youtube_courses(skill):
     youtube = googleapiclient.discovery.build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=YOUTUBE_API_KEY)
@@ -71,6 +76,7 @@ st.write("Upload your Resume and Job Description to analyze missing skills and g
 resume_file = st.file_uploader("📄 Upload Resume (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 job_file = st.file_uploader("📄 Upload Job Description (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
 
+# Analyze Skills Button
 if st.button("Analyze Skills"):
     if resume_file and job_file:
         resume_text = extract_text_from_file(resume_file)
@@ -81,6 +87,10 @@ if st.button("Analyze Skills"):
             job_skills = extract_skills(job_text)
             missing_skills = find_missing_skills(resume_skills, job_skills)
 
+            # Store results in session state
+            st.session_state.skills_analyzed = True
+            st.session_state.missing_skills = missing_skills
+
             st.subheader("🔍 Extracted Skills")
             st.write(f"**Resume Skills:** {', '.join(resume_skills)}")
             st.write(f"**Job Required Skills:** {', '.join(job_skills)}")
@@ -90,18 +100,24 @@ if st.button("Analyze Skills"):
                 st.write(f"You are missing: {', '.join(missing_skills)}")
             else:
                 st.success("You have all the required skills!")
-
-if st.button("📚 Get Recommended Courses"):
-    if 'missing_skills' in locals() and missing_skills:
-        all_courses = []
-        for skill in missing_skills:
-            courses = fetch_youtube_courses(skill)
-            all_courses.extend(courses)
-        
-        if all_courses:
-            df = pd.DataFrame(all_courses)
-            st.table(df)  # Display courses as a table
-        else:
-            st.write("No courses found.")
     else:
-        st.write("Analyze skills first to get recommendations!")
+        st.warning("Please upload both Resume and Job Description files before analyzing!")
+
+# Get Recommended Courses Button
+if st.session_state.skills_analyzed:
+    if st.button("📚 Get Recommended Courses"):
+        if st.session_state.missing_skills:
+            all_courses = []
+            for skill in st.session_state.missing_skills:
+                courses = fetch_youtube_courses(skill)
+                all_courses.extend(courses)
+            
+            if all_courses:
+                df = pd.DataFrame(all_courses)
+                st.table(df)  # Display courses as a table
+            else:
+                st.write("No courses found.")
+        else:
+            st.success("You have all the required skills! No additional courses needed.")
+else:
+    st.warning("Analyze skills first to get recommendations!")
