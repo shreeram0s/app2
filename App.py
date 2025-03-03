@@ -21,9 +21,9 @@ def analyze_resume(resume_text, job_desc_text):
     
     return resume_skills, job_skills, missing_skills
 
-# Function to fetch online learning resources dynamically
+# Function to fetch online learning resources dynamically from trusted sources
 def fetch_learning_resources(skill):
-    search_url = f"https://www.google.com/search?q={skill}+best+online+courses"
+    search_url = f"https://www.google.com/search?q={skill}+course+site%3Acoursera.org+OR+site%3Audemy.com+OR+site%3Aedx.org"
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(search_url, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -31,7 +31,7 @@ def fetch_learning_resources(skill):
     links = []
     for link in soup.find_all("a", href=True):
         url = link["href"]
-        if "http" in url and "google" not in url:
+        if "http" in url and ("coursera.org" in url or "udemy.com" in url or "edx.org" in url):
             links.append(url)
         if len(links) >= 5:
             break
