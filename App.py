@@ -12,7 +12,7 @@ import googleapiclient.discovery
 st_model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # YouTube API Key (Replace with a new secured key)
-YOUTUBE_API_KEY = "REPLACE_WITH_YOUR_NEW_API_KEY"
+YOUTUBE_API_KEY = "AIzaSyBoRgw0WE_KzTVNUvH8d4MiTo1zZ2SqKPI"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
